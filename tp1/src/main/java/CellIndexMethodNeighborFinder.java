@@ -7,14 +7,14 @@ import java.util.Map;
 
 public class CellIndexMethodNeighborFinder {
     private long particleCount;             // N
-    private double environmentSideLength;   // L
-    private int cellAmount;                 // M
-    private double cellSideLength;          // L/M
-    private double detectionRadius;         // rc
-    private boolean periodicBorders;
+    private final double environmentSideLength;   // L
+    private final int cellAmount;                 // M
+    private final double cellSideLength;          // L/M
+    private final double detectionRadius;         // rc
+    private final boolean periodicBorders;
 
-    private List<Particle>[][] environmentGrid;
-    private Map<Particle, List<Particle>> particleNeighborsMap;
+    private final List<Particle>[][] environmentGrid;
+    private final Map<Particle, List<Particle>> particleNeighborsMap;
 
     public CellIndexMethodNeighborFinder(final long N, final double L, final int M, final double rc, boolean periodicBorders, List<Particle> particles) {
         checkParameters(N, L, M, rc, particles);
