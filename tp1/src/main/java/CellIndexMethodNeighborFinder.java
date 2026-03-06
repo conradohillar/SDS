@@ -49,7 +49,7 @@ public class CellIndexMethodNeighborFinder {
                     continue;
                 }
                 for(Particle neighbor : neighbors) {
-                    if(p ==  neighbor) {
+                    if(p.equals(neighbor)) {
                         continue;
                     }
                     if(p.distanceTo(neighbor) < detectionRadius) {
