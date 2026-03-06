@@ -52,7 +52,7 @@ public class CellIndexMethodNeighborFinder {
                     if(p.equals(neighbor)) {
                         continue;
                     }
-                    if(p.distanceTo(neighbor) < detectionRadius) {
+                    if(areNeighbors(p, neighbor)) {
                         particleNeighborsMap.get(neighbor).add(p);
                         particleNeighborsMap.get(p).add(neighbor);
                     }
@@ -99,5 +99,16 @@ public class CellIndexMethodNeighborFinder {
             return null;
         }
         return environmentGrid[real_i][real_j];
+    }
+
+    private boolean areNeighbors(Particle a, Particle b) {
+        double dx = b.x() - a.x();
+        double dy = b.y() - a.y();
+        if(periodicBorders) {
+            dx -= environmentSideLength * Math.round(dx / environmentSideLength);
+            dy -= environmentSideLength * Math.round(dy / environmentSideLength);
+        }
+        double dist = Math.sqrt(dx*dx + dy*dy);
+        return dist <= detectionRadius + a.radius() + b.radius();
     }
 }
