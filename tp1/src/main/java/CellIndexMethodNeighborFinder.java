@@ -1,20 +1,18 @@
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+import java.io.IOException;
+import java.util.*;
 
 
 public class CellIndexMethodNeighborFinder {
-    private long particleCount;                     // N
-    private final double environmentSideLength;     // L
-    private final int cellAmount;                   // M
-    private final double cellSideLength;            // L/M
-    private final double detectionRadius;           // rc
-    private final boolean periodicBorders;
+    private long particleCount;             // N
+    private double environmentSideLength;   // L
+    private int cellAmount;                 // M
+    private double cellSideLength;          // L/M
+    private double detectionRadius;         // rc
+    private boolean periodicBorders;
 
-    private final List<Particle>[][] environmentGrid;
-    private final Map<Particle, List<Particle>> particleNeighborsMap;
+    private List<Particle>[][] environmentGrid;
+
+    Map<Particle, List<Particle>> particleNeighborsMap;
 
     public CellIndexMethodNeighborFinder(final long N, final double L, final int M, final double rc, boolean periodicBorders, List<Particle> particles) {
         checkParameters(N, L, M, rc, particles);
@@ -93,7 +91,7 @@ public class CellIndexMethodNeighborFinder {
     }
 
     private List<Particle> particlesInCell(int i, int j) {
-        int real_i = i, real_j = j;
+        int real_i = i, real_j=j;
         if(periodicBorders) {
             real_i = (i + cellAmount) % cellAmount;
             real_j = (j + cellAmount) % cellAmount;
@@ -113,4 +111,23 @@ public class CellIndexMethodNeighborFinder {
         double dist = Math.sqrt(dx*dx + dy*dy);
         return dist <= detectionRadius + a.radius() + b.radius();
     }
+
+    public static void main(String[] args) throws IOException {
+        if(args.length==5){
+            //@TODO: aca hay que meter el generador de particulas.
+            //createFiles(N)
+            int N = Integer.parseInt(args[0]);
+            String staticPath="static.txt";
+            String dynamicPath="dynamic.txt";
+            StaticData  sd = InputParser.parseStatic(staticPath);
+            DynamicData dd = InputParser.parseDynamic(dynamicPath);
+            List<Particle>particles = InputParser.buildParticles(sd,dd);
+            CellIndexMethodNeighborFinder cim=new CellIndexMethodNeighborFinder(N,Double.parseDouble(args[1]),Integer.parseInt(args[2]),Double.parseDouble(args[3]),Boolean.parseBoolean(args[4]),particles);
+
+        }else{
+            throw new RuntimeException("Insufficient arguments.");
+        }
+
+    }
+
 }
