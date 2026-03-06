@@ -42,14 +42,14 @@ public class InputParser {
 
     public static List<Particle> buildParticles(StaticData sd, DynamicData dd) {
         List<Particle> particles = new ArrayList<>();
-        for (int i = 0; i < sd.N; i++) {
+        for (int i = 0; i < sd.N(); i++) {
             int    id       = i + 1;
-            double radius   = sd.radiiAndProps.get(i)[0];
-            double property = sd.radiiAndProps.get(i)[1];
-            double x        = dd.positions.get(i)[0];
-            double y        = dd.positions.get(i)[1];
-            double vx       = dd.positions.get(i)[2];
-            double vy       = dd.positions.get(i)[3];
+            double radius   = sd.radiiAndProps().get(i)[0];
+            double property = sd.radiiAndProps().get(i)[1];
+            double x        = dd.positions().get(i)[0];
+            double y        = dd.positions().get(i)[1];
+            double vx       = dd.positions().get(i)[2];
+            double vy       = dd.positions().get(i)[3];
             particles.add(new Particle(id, x, y, vx, vy, radius, property));
         }
         return particles;
