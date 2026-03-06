@@ -6,11 +6,11 @@ import java.util.Map;
 
 
 public class CellIndexMethodNeighborFinder {
-    private long particleCount;             // N
-    private final double environmentSideLength;   // L
-    private final int cellAmount;                 // M
-    private final double cellSideLength;          // L/M
-    private final double detectionRadius;         // rc
+    private long particleCount;                     // N
+    private final double environmentSideLength;     // L
+    private final int cellAmount;                   // M
+    private final double cellSideLength;            // L/M
+    private final double detectionRadius;           // rc
     private final boolean periodicBorders;
 
     private final List<Particle>[][] environmentGrid;
