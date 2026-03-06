@@ -14,11 +14,10 @@ public class CellIndexMethodNeighborFinder {
     private boolean periodicBorders;
 
     private List<Particle>[][] environmentGrid;
-
-    Map<Particle, List<Particle>> particleNeighborsMap;
+    private Map<Particle, List<Particle>> particleNeighborsMap;
 
     public CellIndexMethodNeighborFinder(final long N, final double L, final int M, final double rc, boolean periodicBorders, List<Particle> particles) {
-        checkParameters(L, M, rc, particles);
+        checkParameters(N, L, M, rc, particles);
 
         this.particleCount = N;
         this.environmentSideLength = L;
@@ -38,10 +37,10 @@ public class CellIndexMethodNeighborFinder {
 
     public Map<Particle, List<Particle>> findNeighbors() {
         for (Particle p : particleNeighborsMap.keySet()) {
-            int p_i = (int) (p.x() / cellSideLength);
-            int p_j = (int) (p.y() / cellSideLength);
+            int p_i = Math.min((int) (p.x() / cellSideLength), cellAmount - 1);
+            int p_j = Math.min((int) (p.y() / cellSideLength), cellAmount - 1);
 
-            int[][] indexOffsets = {{0,0},{0,-1},{1,-1},{1,0},{1,1}};   // Solo recorremos los cuatro cuadrantes a la derecha
+            int[][] indexOffsets = {{0,0},{0,-1},{1,-1},{1,0},{1,1}};   // Recorremos solo las celdas necesarias para no repetir pares
 
             for (int[] offsets : indexOffsets) {
                 List<Particle> neighbors = particlesInCell(p_i + offsets[0], p_j + offsets[1]);
@@ -49,7 +48,7 @@ public class CellIndexMethodNeighborFinder {
                     continue;
                 }
                 for(Particle neighbor : neighbors) {
-                    if(p.equals(neighbor)) {
+                    if(p.equals(neighbor) || p.id() > neighbor.id()) {
                         continue;
                     }
                     if(areNeighbors(p, neighbor)) {
@@ -64,25 +63,28 @@ public class CellIndexMethodNeighborFinder {
 
     private void fillEnvironmentGrid(final List<Particle> particles) {
         for (Particle p : particles) {
-            int i = (int) (p.x() / cellSideLength);
-            int j = (int) (p.y() / cellSideLength);
+            int i = Math.min((int) (p.x() / cellSideLength), cellAmount - 1);
+            int j = Math.min((int) (p.y() / cellSideLength), cellAmount - 1);
             if(environmentGrid[i][j] == null) {
                 environmentGrid[i][j] = new ArrayList<>();
             }
-            environmentGrid[i][j].add(new Particle(p.x(), p.y(), p.radius()));
+            environmentGrid[i][j].add(p);
         }
     }
 
-    private void checkParameters(final double L, final int M, final double rc, final List<Particle> particles) {
+    private void checkParameters(final long N, final double L, final int M, final double rc, final List<Particle> particles) {
+        if (particles.size() != N) {
+            throw new IllegalArgumentException("Particle count does not match N");
+        }
+
         double largest= 0, secondLargest = 0;
         for(Particle p : particles) {
-            if(p.radius() > secondLargest) {
-                secondLargest = p.radius();
-            }
-            if(secondLargest > largest) {
-                double tmp = largest;
-                largest = secondLargest;
-                secondLargest = tmp;
+            double r = p.radius();
+            if(r > largest) {
+                secondLargest = largest;
+                largest = r;
+            } else if(r > secondLargest) {
+                secondLargest = r;
             }
         }
         if(L/M <= rc + largest + secondLargest) {
