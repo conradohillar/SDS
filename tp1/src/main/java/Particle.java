@@ -1,4 +1,4 @@
-public record Particle(long id, double x, double y, double radius, double property) {
+public record Particle(long id, double x, double y, double vx, double vy, double radius, double property) {
     public boolean overlaps(Particle p) {
         double dx = p.x() - x();
         double dy = p.y() - y();

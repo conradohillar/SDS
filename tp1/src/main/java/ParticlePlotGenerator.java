@@ -21,7 +21,7 @@ public class ParticlePlotGenerator {
                 double x_pos = Math.random() * L;
                 double y_pos = Math.random() * L;
                 double radius = Math.random() * (maxParticleRadius - minParticleRadius) + minParticleRadius;
-                newParticle = new Particle(i, x_pos, y_pos, radius);
+                newParticle = new Particle(i, x_pos, y_pos,0,0, radius,0);
                 attempts++;
 
                 if (attempts >= maxAttempts) {
