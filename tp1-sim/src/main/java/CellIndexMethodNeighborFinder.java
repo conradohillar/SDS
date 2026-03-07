@@ -1,3 +1,5 @@
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 
@@ -112,19 +114,45 @@ public class CellIndexMethodNeighborFinder {
         return dist <= detectionRadius + a.radius() + b.radius();
     }
 
-    public static void main(String[] args) throws IOException {
-        if(args.length==5){
-            //@TODO: aca hay que meter el generador de particulas.
-            //createFiles(N)
-            int N = Integer.parseInt(args[0]);
-            String staticPath="static.txt";
-            String dynamicPath="dynamic.txt";
-            StaticData  sd = InputParser.parseStatic(staticPath);
-            DynamicData dd = InputParser.parseDynamic(dynamicPath);
-            List<Particle>particles = InputParser.buildParticles(sd,dd);
-            CellIndexMethodNeighborFinder cim=new CellIndexMethodNeighborFinder(N,Double.parseDouble(args[1]),Integer.parseInt(args[2]),Double.parseDouble(args[3]),Boolean.parseBoolean(args[4]),particles);
+    public void printOutput() {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(ParticlePlotGenerator.BIN_PATH + "neighbors.txt"))) {
+            for (Map.Entry<Particle, List<Particle>> entry : particleNeighborsMap.entrySet()) {
+                Particle p = entry.getKey();
+                List<Particle> neighbors = entry.getValue();
+                writer.write(String.format("%d", p.id()));
+                for(Particle neighbor : neighbors) {
+                    writer.write(String.format(",%d", neighbor.id()));
+                }
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to export static.txt", e);
+        }
 
-        }else{
+    }
+
+    public static void main(String[] args) throws IOException {
+        if (true) {
+//        if (args.length == 5){
+            long N = 100;
+            double L = 20.0;
+            int M = 10;
+            double rc = 1.0;
+            double minParticleRadius = 0.23;
+            double maxParticleRadius = 0.26;
+            boolean periodicBorders = false;
+
+            ParticlePlotGenerator particlePlotGenerator = new ParticlePlotGenerator(N, L, minParticleRadius, maxParticleRadius, periodicBorders);
+            particlePlotGenerator.exportFiles();
+            String staticPath = ParticlePlotGenerator.BIN_PATH + "static.txt";
+            String dynamicPath = ParticlePlotGenerator.BIN_PATH + "dynamic.txt";
+            StaticData sd = InputParser.parseStatic(staticPath);
+            DynamicData dd = InputParser.parseDynamic(dynamicPath);
+            List<Particle> particles = InputParser.buildParticles(sd, dd);
+            CellIndexMethodNeighborFinder cim = new CellIndexMethodNeighborFinder(N, L, M, rc, periodicBorders, particles);
+            cim.findNeighbors();
+            cim.printOutput();
+        } else {
             throw new RuntimeException("Insufficient arguments.");
         }
 

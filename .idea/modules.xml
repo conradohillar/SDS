@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/SDS.iml" filepath="$PROJECT_DIR$/SDS.iml" />
+      <module fileurl="file://$PROJECT_DIR$/tp1-vis/tp1-vis.iml" filepath="$PROJECT_DIR$/tp1-vis/tp1-vis.iml" />
     </modules>
   </component>
 </project>
