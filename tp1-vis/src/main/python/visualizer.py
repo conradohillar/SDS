@@ -169,7 +169,7 @@ def on_pick(event):
 
     # rc ring (only if rc was provided)
     if rc is not None:
-        rc_ring = patches.Circle((xs[idx], ys[idx]), rc,
+        rc_ring = patches.Circle((xs[idx], ys[idx]), rc + radii[idx],
                                   linewidth=1.2, linestyle="--",
                                   edgecolor=RC_COLOR, facecolor="none",
                                   alpha=0.6, zorder=4)
