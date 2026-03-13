@@ -15,7 +15,7 @@ public class CellIndexMethodNeighborFinder {
 
     Map<Particle, List<Particle>> particleNeighborsMap;
 
-    public CellIndexMethodNeighborFinder(final long N, final double L, final int M, final double rc,
+    public CellIndexMethodNeighborFinder(final long N, final double L, final double rc,
             boolean periodicBorders, List<Particle> particles) {
         checkParameters(N, particles);
 
@@ -28,15 +28,10 @@ public class CellIndexMethodNeighborFinder {
         for (Particle p : particles) {
             particleNeighborsMap.put(p, new ArrayList<>());
         }
-        int newM;
-        if (M == 0) {
-            newM = getMaxMValue(L, rc, particles);
-        } else {
-            newM = M;
-        }
-        this.cellSideLength = L / newM;
-        environmentGrid = new ArrayList[newM][newM];
-        this.cellAmount = newM;
+        int M = getMaxMValue(L, rc, particles);
+        this.cellSideLength = L / M;
+        environmentGrid = new ArrayList[M][M];
+        this.cellAmount = M;
         fillEnvironmentGrid(particles);
 
 
@@ -161,7 +156,6 @@ public class CellIndexMethodNeighborFinder {
             long N = 500;
             double L = 20.0;
             double rc = 1.0;
-            int M = 0; // Si M = 0, calcula el M óptimo
             double minParticleRadius = 0.23;
             double maxParticleRadius = 0.26;
             boolean periodicBorders = true;
@@ -174,7 +168,7 @@ public class CellIndexMethodNeighborFinder {
             StaticData sd = InputParser.parseStatic(staticPath);
             DynamicData dd = InputParser.parseDynamic(dynamicPath);
             List<Particle> particles = InputParser.buildParticles(sd, dd);
-            CellIndexMethodNeighborFinder cim = new CellIndexMethodNeighborFinder(N, L, M, rc, periodicBorders,
+            CellIndexMethodNeighborFinder cim = new CellIndexMethodNeighborFinder(N, L, rc, periodicBorders,
                     particles);
             long time = System.currentTimeMillis();
             cim.findNeighborsBruteForce();

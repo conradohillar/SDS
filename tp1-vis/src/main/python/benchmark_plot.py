@@ -121,8 +121,9 @@ def plot_vs_N(stats):
             )
 
     setup_ax(ax, "Tiempo vs N (curvas por M)", "N", "Tiempo [ns]")
-    if max_time > 0 and min_time < float("inf") and max_time / min_time > 100:
-        ax.set_yscale("log")
+    # Escalas logarítmicas en ambos ejes
+    ax.set_xscale("log")
+    ax.set_yscale("log")
     ax.legend()
     fig.tight_layout()
 
