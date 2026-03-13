@@ -15,9 +15,10 @@ public class BenchmarkRunner {
     private static final double MAX_RADIUS = 0.26;
     private static final boolean PERIODIC_BORDERS = false;
 
-    // Solo variamos N; la densidad fija define L(N) y de ahí calculamos M automáticamente
+    // Solo variamos N; la densidad fija define L(N). M se calcula internamente en el CIM.
     private static final long[] NS = {10, 50, 100, 500, 1000, 2000};
-    private static final int REPETITIONS = 100;
+    private static final int WARMUP_RUNS = 20;
+    private static final int MEASURED_RUNS = 100;
 
     public static void main(String[] args) throws IOException {
         long start = System.nanoTime();
@@ -27,13 +28,34 @@ public class BenchmarkRunner {
             writer.write("N,method,run_index,time_ns");
             writer.newLine();
 
-            for (long N : NS) {
-                // Ajustar L para mantener densidad N/L^2 constante
-                double L = Math.sqrt(N / TARGET_DENSITY);
+            // Warmup global para que la JVM compile los hot paths
+            for (int i = 0; i < WARMUP_RUNS; i++) {
+                for (long N : NS) {
+                    double L = Math.sqrt(N / TARGET_DENSITY);
+                    ParticlePlotGenerator generator = new ParticlePlotGenerator(N, L, MIN_RADIUS, MAX_RADIUS,
+                            PERIODIC_BORDERS);
+                    generator.exportFiles();
 
+                    String staticPath = ParticlePlotGenerator.BIN_PATH + "static.txt";
+                    String dynamicPath = ParticlePlotGenerator.BIN_PATH + "dynamic.txt";
+                    StaticData sd = InputParser.parseStatic(staticPath);
+                    DynamicData dd = InputParser.parseDynamic(dynamicPath);
+                    List<Particle> particles = InputParser.buildParticles(sd, dd);
 
-                for (int runIndex = 0; runIndex < REPETITIONS; runIndex++) {
-                    // Generar partículas (no se mide este tiempo)
+                    CellIndexMethodNeighborFinder cimCellIndex = new CellIndexMethodNeighborFinder(N, L, RC,
+                            PERIODIC_BORDERS, particles);
+                    cimCellIndex.findNeighbors();
+
+                    CellIndexMethodNeighborFinder cimBruteForce = new CellIndexMethodNeighborFinder(N, L, RC,
+                            PERIODIC_BORDERS, particles);
+                    cimBruteForce.findNeighborsBruteForce();
+                }
+            }
+
+            // Corridas medidas que se vuelcan al CSV
+            for (int runIndex = 0; runIndex < MEASURED_RUNS; runIndex++) {
+                for (long N : NS) {
+                    double L = Math.sqrt(N / TARGET_DENSITY);
                     ParticlePlotGenerator generator = new ParticlePlotGenerator(N, L, MIN_RADIUS, MAX_RADIUS,
                             PERIODIC_BORDERS);
                     generator.exportFiles();
@@ -53,7 +75,7 @@ public class BenchmarkRunner {
                     long cellIndexTime = t1 - t0;
                     writeResult(writer, N, "cell_index", runIndex, cellIndexTime);
 
-                    // Brute force (M no afecta, pero lo registramos para referencia)
+                    // Brute force
                     CellIndexMethodNeighborFinder cimBruteForce = new CellIndexMethodNeighborFinder(N, L, RC,
                             PERIODIC_BORDERS, particles);
                     long t2 = System.nanoTime();

@@ -17,7 +17,7 @@ public class ParticlePlotGenerator {
 
         this.N = N;
         this.L = L;
-        particles = new ArrayList<>();
+        particles = new ArrayList<>((int) N);
 
         for (int i = 0; i < N; i++) {
             Particle newParticle;

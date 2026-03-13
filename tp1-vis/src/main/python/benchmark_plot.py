@@ -10,19 +10,21 @@ CSV_PATH = os.path.join(BIN_PATH, "benchmark_results.csv")
 
 
 def load_results(path):
+    """
+    Lee el CSV generado por BenchmarkRunner, sin columna de M:
+    N,method,run_index,time_ns
+    """
     results = defaultdict(list)
     with open(path, newline="") as f:
         reader = csv.reader(f)
         header = next(reader, None)
         for row in reader:
-            if not row or len(row) < 5:
+            if not row or len(row) < 4:
                 continue
             N = int(row[0])
-            M = int(row[1])
-            method = row[2]
-            run_index = int(row[3])
-            time_ns = int(row[4])
-            key = (N, M, method)
+            method = row[1]
+            time_ns = int(row[3])
+            key = (N, method)
             results[key].append(time_ns)
     return results
 
@@ -50,78 +52,44 @@ def setup_ax(ax, title, xlabel, ylabel):
     ax.grid(True, which="both", linestyle="--", alpha=0.3)
 
 
-def plot_vs_N(stats):
+def plot_vs_N(stats, rho):
     """
-    Único gráfico t vs N con:
-    - Una sola curva de fuerza bruta (brute_force) en naranja
-    - Varias curvas de Cell Index (cell_index), una por cada M, en colores distintos
+    Único gráfico t vs N comparando Cell Index vs Brute force
+    con densidad constante.
     """
     Ns = sorted({key[0] for key in stats.keys()})
-    Ms = sorted({key[1] for key in stats.keys()})
 
     fig, ax = plt.subplots()
-    max_time = 0.0
-    min_time = float("inf")
 
-    # Fuerza bruta: una única curva (usamos un M de referencia, por ejemplo el menor)
-    if Ms:
-        ref_M = Ms[0]
-        x_bf = []
-        y_bf = []
-        yerr_bf = []
+    for method, label, color in [
+        ("cell_index", "Cell Index", "tab:blue"),
+        ("brute_force", "Brute force", "tab:orange"),
+    ]:
+        x = []
+        y = []
+        yerr = []
         for N in Ns:
-            key = (N, ref_M, "brute_force")
+            key = (N, method)
             if key not in stats:
                 continue
             mean, std = stats[key]
-            x_bf.append(N)
-            y_bf.append(mean)
-            yerr_bf.append(std)
-            max_time = max(max_time, mean + std)
-            min_time = min(min_time, max(1.0, mean - std))
+            x.append(N)
+            y.append(mean)
+            yerr.append(std)
 
-        if x_bf:
+        if x:
             ax.errorbar(
-                x_bf,
-                y_bf,
-                yerr=yerr_bf,
+                x,
+                y,
+                yerr=yerr,
                 marker="o",
                 capsize=4,
-                label=f"Brute force",
-                color="tab:orange",
-            )
-
-    # Cell Index Method: una curva por cada M, en colores distintos
-    cmap = plt.get_cmap("tab10")
-    for idx, M in enumerate(Ms):
-        x_ci = []
-        y_ci = []
-        yerr_ci = []
-        for N in Ns:
-            key = (N, M, "cell_index")
-            if key not in stats:
-                continue
-            mean, std = stats[key]
-            x_ci.append(N)
-            y_ci.append(mean)
-            yerr_ci.append(std)
-            max_time = max(max_time, mean + std)
-            min_time = min(min_time, max(1.0, mean - std))
-
-        if x_ci:
-            color = cmap(idx % 10)
-            ax.errorbar(
-                x_ci,
-                y_ci,
-                yerr=yerr_ci,
-                marker="o",
-                capsize=4,
-                label=f"Cell Index (M={M})",
+                label=label,
                 color=color,
             )
 
-    setup_ax(ax, "Tiempo vs N (curvas por M)", "N", "Tiempo [ns]")
-    # Escalas logarítmicas en ambos ejes
+    title = f"Tiempo vs N (densidad constante ρ = {rho:.4f} part./L²)"
+    setup_ax(ax, title, "N", "Tiempo [ns]")
     ax.set_xscale("log")
     ax.set_yscale("log")
     ax.legend()
@@ -170,8 +138,12 @@ def main():
     results = load_results(CSV_PATH)
     stats = compute_stats(results)
 
-    plot_vs_N(stats)
-    plot_vs_M(stats)
+    # Debe coincidir con el BenchmarkRunner
+    reference_L = 20.0
+    reference_N = 100
+    rho = reference_N / (reference_L ** 2)
+
+    plot_vs_N(stats, rho)
 
     plt.show()
 
