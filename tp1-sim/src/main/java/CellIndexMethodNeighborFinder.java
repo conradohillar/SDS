@@ -17,12 +17,10 @@ public class CellIndexMethodNeighborFinder {
 
     public CellIndexMethodNeighborFinder(final long N, final double L, final int M, final double rc,
             boolean periodicBorders, List<Particle> particles) {
-        checkParameters(N, L, M, rc, particles);
+        checkParameters(N, particles);
 
         this.particleCount = N;
         this.environmentSideLength = L;
-        this.cellAmount = M;
-        this.cellSideLength = L / M;
         this.detectionRadius = rc;
         this.periodicBorders = periodicBorders;
 
@@ -30,9 +28,18 @@ public class CellIndexMethodNeighborFinder {
         for (Particle p : particles) {
             particleNeighborsMap.put(p, new ArrayList<>());
         }
-
-        environmentGrid = new ArrayList[M][M];
+        int newM;
+        if (M == 0) {
+            newM = getMaxMValue(L, rc, particles);
+        } else {
+            newM = M;
+        }
+        this.cellSideLength = L / newM;
+        environmentGrid = new ArrayList[newM][newM];
+        this.cellAmount = newM;
         fillEnvironmentGrid(particles);
+
+
     }
 
     public void findNeighbors() {
@@ -88,12 +95,7 @@ public class CellIndexMethodNeighborFinder {
         }
     }
 
-    private void checkParameters(final long N, final double L, final int M, final double rc,
-            final List<Particle> particles) {
-        if (particles.size() != N) {
-            throw new IllegalArgumentException("Particle count does not match N");
-        }
-
+    private static int getMaxMValue(final double L, final double rc, final List<Particle> particles) {
         double largest = 0, secondLargest = 0;
         for (Particle p : particles) {
             double r = p.radius();
@@ -104,8 +106,12 @@ public class CellIndexMethodNeighborFinder {
                 secondLargest = r;
             }
         }
-        if (L / M <= rc + largest + secondLargest) {
-            throw new RuntimeException("L/M out of range (lesser than rc + largest particles' radius)");
+        return (int)(L / (rc + largest + secondLargest));
+    }
+
+    private void checkParameters(final long N, final List<Particle> particles) {
+        if (particles.size() != N) {
+            throw new IllegalArgumentException("Particle count does not match N");
         }
     }
 
@@ -152,13 +158,13 @@ public class CellIndexMethodNeighborFinder {
     public static void main(String[] args) throws IOException {
         if (true) {
 
-            long N = 10;
+            long N = 500;
             double L = 20.0;
-            int M = 10;
             double rc = 1.0;
+            int M = 0; // Si M = 0, calcula el M óptimo
             double minParticleRadius = 0.23;
             double maxParticleRadius = 0.26;
-            boolean periodicBorders = false;
+            boolean periodicBorders = true;
 
             ParticlePlotGenerator particlePlotGenerator = new ParticlePlotGenerator(N, L, minParticleRadius,
                     maxParticleRadius, periodicBorders);
