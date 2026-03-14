@@ -1,6 +1,8 @@
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 
 public class CellIndexMethodNeighborFinder {
@@ -135,8 +137,14 @@ public class CellIndexMethodNeighborFinder {
     }
 
     public void printOutput() {
+        Path binDir = ParticlePlotGenerator.DEFAULT_BIN_DIR;
+        try {
+            Files.createDirectories(binDir);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to create output directory: " + binDir, e);
+        }
         try (BufferedWriter writer = new BufferedWriter(
-                new FileWriter(ParticlePlotGenerator.BIN_PATH + "neighbors.txt"))) {
+                new FileWriter(binDir.resolve("neighbors.txt").toString()))) {
             for (Map.Entry<Particle, List<Particle>> entry : particleNeighborsMap.entrySet()) {
                 Particle p = entry.getKey();
                 List<Particle> neighbors = entry.getValue();
@@ -163,10 +171,10 @@ public class CellIndexMethodNeighborFinder {
             boolean periodicBorders = true;
 
             ParticlePlotGenerator particlePlotGenerator = new ParticlePlotGenerator(N, L, minParticleRadius,
-                    maxParticleRadius, periodicBorders);
+                    maxParticleRadius, periodicBorders,0);
             particlePlotGenerator.exportFiles();
-            String staticPath = ParticlePlotGenerator.BIN_PATH + "static.txt";
-            String dynamicPath = ParticlePlotGenerator.BIN_PATH + "dynamic.txt";
+            String staticPath = particlePlotGenerator.binFile("static.txt").toString();
+            String dynamicPath = particlePlotGenerator.binFile("dynamic.txt").toString();
             StaticData sd = InputParser.parseStatic(staticPath);
             DynamicData dd = InputParser.parseDynamic(dynamicPath);
             List<Particle> particles = InputParser.buildParticles(sd, dd);

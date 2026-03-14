@@ -10,6 +10,7 @@
       <list>
         <option value="$PROJECT_DIR$/tp1/pom.xml" />
         <option value="$PROJECT_DIR$/tp1-sim/pom.xml" />
+        <option value="$PROJECT_DIR$/tp2-sim/pom.xml" />
       </list>
     </option>
     <option name="ignoredFiles">
