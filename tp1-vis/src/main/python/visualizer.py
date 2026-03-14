@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import os
 
+from sds_env import get_tp1_bin_path
+
 # ── CLI args ───────────────────────────────────────────────────────────────────
 
 parser = argparse.ArgumentParser(description="Particle Simulation Visualizer")
@@ -12,7 +14,7 @@ parser.add_argument("--rc", type=float, default=None,
                     help="Detection radius (overrides value in static.txt)")
 args = parser.parse_args()
 
-BIN_PATH = "/home/conradohillar/Documents/ITBA/4to_2C/SDS/tp1-bin/"
+BIN_PATH = get_tp1_bin_path()
 
 # ── Parsers ────────────────────────────────────────────────────────────────────
 

@@ -68,6 +68,10 @@ public class ParticlePlotGenerator {
     }
 
     private static Path resolveDefaultBinDir() {
+        String fromEnv = System.getenv("TP1_BIN_PATH");
+        if (fromEnv != null && !fromEnv.isEmpty()) {
+            return Paths.get(fromEnv).toAbsolutePath().normalize();
+        }
         // IntelliJ typically sets working dir to module root; CLI often uses repo root.
         Path cwd = Paths.get(System.getProperty("user.dir")).toAbsolutePath().normalize();
         Path candidateInCwd = cwd.resolve("tp1-bin");

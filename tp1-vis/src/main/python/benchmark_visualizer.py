@@ -5,7 +5,9 @@ from collections import defaultdict
 
 import matplotlib.pyplot as plt
 
-BIN_PATH = "/home/conradohillar/Documents/ITBA/4to_2C/SDS/tp1-bin/"
+from sds_env import get_tp1_bin_path
+
+BIN_PATH = get_tp1_bin_path()
 CSV_PATH = os.path.join(BIN_PATH, "benchmark_results.csv")
 
 # Debe coincidir con BenchmarkRunner

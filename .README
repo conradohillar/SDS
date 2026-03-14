@@ -1,0 +1,133 @@
+# TP2 — Off-lattice (Vicsek) simulation and visualizer
+
+This document explains how to build and run **tp2-sim** (the simulation) and **tp2-vis** (the visualizer) for the Vicsek model.
+
+---
+
+## Prerequisites
+
+- **Java 21** and **Maven** (for tp2-sim)
+- **Python 3** with **matplotlib** and **numpy** (for tp2-vis)
+
+---
+
+## tp2-sim (simulation)
+
+Off-lattice Vicsek simulation. It generates initial particle data, runs the dynamics, and writes frame files into a output directory.
+
+### Build
+
+1. Build **tp1-sim** first (tp2-sim depends on its JAR):
+   ```bash
+   cd tp1-sim
+   mvn package -DskipTests
+   ```
+
+2. Compile and run **tp2-sim** from the repo root or from `tp2-sim`:
+   ```bash
+   cd tp2-sim
+   mvn compile
+   ```
+
+### Run
+
+From the **tp2-sim** directory (or with `user.dir` set so the default output path resolves correctly):
+
+```bash
+mvn exec:java
+```
+
+Or with arguments:
+
+```bash
+mvn exec:java -Dexec.args="MAX_FRAMES"
+mvn exec:java -Dexec.args="--withLeader"
+mvn exec:java -Dexec.args="500 --withLeader"
+```
+
+**Arguments (optional, any order):**
+
+| Argument      | Meaning |
+|---------------|--------|
+| `MAX_FRAMES`  | Number of frames to simulate (default: 1000). First numeric argument is used. |
+| `--withLeader`| Run with a **leader** particle (id 1). The leader is not influenced by others and keeps its current direction; other particles follow the usual Vicsek rule. |
+
+**Output:**
+
+- By default, output is written under **tp2-bin/** (relative to the working directory):
+  - `static.txt`, `dynamic.txt` (initial data)
+  - `frames/frame_00000.txt`, `frame_00001.txt`, ...
+- To use another directory, set the environment variable:
+  ```bash
+  export TP2_BIN_PATH=/path/to/your/tp2-bin
+  mvn exec:java -Dexec.args="500"
+  ```
+
+---
+
+## tp2-vis (visualizer)
+
+Python script that plays back the frame files produced by tp2-sim (particles as arrows + dots).
+
+### Run
+
+From the **repo root** or from **tp2-vis** (or the directory that contains `visualizer2.py`):
+
+```bash
+python tp2-vis/src/main/python/visualizer2.py
+```
+
+If you run from inside `tp2-vis/src/main/python`:
+
+```bash
+python visualizer2.py
+```
+
+By default it looks for:
+
+- `static.txt` and `frames/` in **tp2-bin/** (under current dir or parent).
+
+**Options:**
+
+| Option          | Default    | Description |
+|-----------------|------------|-------------|
+| `--bin DIR`     | (see above)| Directory containing `static.txt` and `frames/`. |
+| `--static PATH` | —          | Override path to static file. |
+| `--frames-dir DIR` | —        | Override path to the folder with `frame_*.txt` files. |
+| `--fps F`        | 30        | Target playback frames per second. |
+| `--arrow-len L`  | 0.35      | Arrow length (direction only, in box units). |
+| `--leader-id ID` | —         | Highlight particle with 1-based id **ID** in red (particle and arrow). Use `1` when the simulation was run with `--withLeader`. |
+
+**Examples:**
+
+```bash
+# Default (looks for tp2-bin in cwd or parent)
+python tp2-vis/src/main/python/visualizer2.py
+
+# Specify output directory from the sim
+python tp2-vis/src/main/python/visualizer2.py --bin /path/to/tp2-bin
+
+# Highlight the leader (particle 1) in red
+python tp2-vis/src/main/python/visualizer2.py --leader-id 1
+
+# Custom FPS and arrow length
+python tp2-vis/src/main/python/visualizer2.py --fps 20 --arrow-len 0.4
+```
+
+---
+
+## Typical workflow
+
+1. Run the simulation (e.g. 500 frames with a leader):
+   ```bash
+   cd tp2-sim
+   mvn exec:java -Dexec.args="500 --withLeader"
+   ```
+
+2. Visualize and show the leader in red:
+   ```bash
+   cd ..
+   python tp2-vis/src/main/python/visualizer2.py --leader-id 1
+   ```
+
+If you set `TP2_BIN_PATH` when running the sim, pass the same path to the visualizer with `--bin`.

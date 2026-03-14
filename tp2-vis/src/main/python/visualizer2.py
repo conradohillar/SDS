@@ -114,7 +114,8 @@ def main() -> None:
                         help="Visual arrow length (in box units). Uses direction only, not speed magnitude.")
     parser.add_argument("--periodic", action=argparse.BooleanOptionalAction, default=True,
                         help="Apply periodic boundary conditions")
-    parser.add_argument("--leader-id", type=int, default=None, help="Highlight a leader particle (1-based id)")
+    parser.add_argument("--leader-id", type=int, default=None,
+                        help="Highlight leader particle in red (1-based id; use 1 when sim was run with --withLeader)")
     args = parser.parse_args()
 
     bin_dir = os.path.abspath(args.bin)
@@ -169,28 +170,27 @@ def main() -> None:
     )
     ax.add_patch(boundary)
 
+    # Per-particle colors: red for leader, white otherwise.
+    leader_idx = (args.leader_id - 1) if args.leader_id is not None and 1 <= args.leader_id <= sd.n else None
+    quiver_colors = np.array(["#ff4444" if i == leader_idx else "#ffffff" for i in range(sd.n)])
+    scatter_colors = np.array(["#ff4444" if i == leader_idx else "#ffffff" for i in range(sd.n)])
+    scatter_alphas = np.array([0.9 if i == leader_idx else 0.15 for i in range(sd.n)])
+
     # Draw as velocity vectors (as requested by TP2 statement).
     # Use direction-only vectors so arrows are clearly visible.
     u_vis, v_vis = direction_vectors(vx, vy, args.arrow_len)
     quiv = ax.quiver(
         x, y, u_vis, v_vis,
         angles="xy", scale_units="xy", scale=1.0,
-        color="#ffffff",
+        color=quiver_colors,
         width=0.004,
         headlength=4.5,
         headaxislength=4.0,
         zorder=2,
     )
 
-    # Leader highlight (optional)
-    leader_dot = None
-    if args.leader_id is not None:
-        lid0 = args.leader_id - 1
-        if 0 <= lid0 < sd.n:
-            (leader_dot,) = ax.plot([x[lid0]], [y[lid0]], "o", markersize=6, color="#ff4444", zorder=3)
-
-    # Tiny dots under arrows help when arrows overlap.
-    pts = ax.scatter(x, y, s=6, c="#ffffff", alpha=0.15, zorder=1.5)
+    # Tiny dots under arrows (and leader highlighted in red when --leader-id set).
+    pts = ax.scatter(x, y, s=6, c=scatter_colors, alpha=scatter_alphas, zorder=1.5)
 
     # ---- Update loop (frame playback) ----
     interval_ms = int(max(1.0, 1000.0 / max(1e-9, args.fps)))
@@ -210,12 +210,8 @@ def main() -> None:
         quiv.set_UVC(u_vis, v_vis)
         pts.set_offsets(np.c_[x, y])
 
-        if leader_dot is not None and args.leader_id is not None:
-            lid0 = args.leader_id - 1
-            leader_dot.set_data([x[lid0]], [y[lid0]])
-
         title.set_text(f"TP2 Off-Lattice  —  frame={idx+1}/{frame_count}  t={df.t:.2f}  N={sd.n}  L={sd.l}")
-        return (quiv, pts, title, leader_dot) if leader_dot is not None else (quiv, pts, title)
+        return quiv, pts, title
 
     # Keep a reference to the animation object; otherwise it can get GC'd and stop updating.
     _anim = FuncAnimation(fig, step, frames=frame_count, interval=interval_ms, blit=False)

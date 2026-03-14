@@ -10,16 +10,44 @@ import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class AutomataOffLattice {
-    public static final String BIN_PATH = "/home/psalinas/facultad/sds/SDS/tp2-bin/";
+    private static final String BIN_PATH = resolveBinPath();
     private static final double DEFAULT_DT = 1.0;
+
+    private static String resolveBinPath() {
+        String fromEnv = System.getenv("TP2_BIN_PATH");
+        if (fromEnv != null && !fromEnv.isEmpty()) {
+            return fromEnv;
+        }
+        return Paths.get(System.getProperty("user.dir")).resolve("tp2-bin").toAbsolutePath().normalize().toString();
+    }
     private static final double DEFAULT_NOISE = 0.5;
-    private static final long DEFAULT_STEPS = Long.MAX_VALUE;
+    private static final long DEFAULT_MAX_FRAMES = 1000L;
+
+    /** When withLeader is true, particle with id 1 is the leader (not affected by others, follows its own path). */
+    private static final long LEADER_ID = 1L;
 
     public static void main(String[] args) throws IOException {
+        long start = System.nanoTime();
+        boolean withLeader = false;
+        for (String arg : args) {
+            if ("--withLeader".equals(arg)) {
+                withLeader = true;
+                break;
+            }
+        }
+        long maxFrames = DEFAULT_MAX_FRAMES;
+        for (String arg : args) {
+            try {
+                maxFrames = Long.parseLong(arg);
+                break;
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        long steps = maxFrames > 0 ? maxFrames - 1 : 0;
+
         double L = 10.0;
-        int M = 10; //@TODO: Cambiar para que no lo podamos definir nosotros.
-        int densidad = 4;
-        long N = (long) Math.pow(L,2) * densidad;
+        int cellDensity = 4;
+        long N = (long) Math.pow(L,2) * cellDensity;
         double rc = 1.0;
         double minParticleRadius = 0.0;
         double maxParticleRadius = 0.0;
@@ -37,9 +65,9 @@ public class AutomataOffLattice {
         DynamicData dd = InputParser.parseDynamic(dynamicPath);
         List<Particle> particles = InputParser.buildParticles(sd, dd);
 
-        runVicsekSimulation(particles, L, rc, velocityModule, DEFAULT_DT, DEFAULT_NOISE, DEFAULT_STEPS, periodicBorders, binDir);
-
-
+        runVicsekSimulation(particles, L, rc, velocityModule, DEFAULT_DT, DEFAULT_NOISE, steps, periodicBorders, withLeader, binDir);
+        long end = System.nanoTime();
+        System.out.printf("Rendered %d frames in %.3f seconds\n", maxFrames, (end - start) / 1000000000.0);
     }
 
     private static void runVicsekSimulation(List<Particle> initialParticles,
@@ -50,6 +78,7 @@ public class AutomataOffLattice {
                                             double eta,
                                             long steps,
                                             boolean periodicBorders,
+                                            boolean withLeader,
                                             Path binDir) throws IOException {
         Path framesDir = binDir.resolve("frames");
         recreateDir(framesDir);
@@ -58,7 +87,7 @@ public class AutomataOffLattice {
         for (long step = 0; step < steps; step++) {
             double time = step * dt;
             exportFrame(framesDir, step, time, current);
-            current = advanceOneStep(current, L, rc, velocityModule, dt, eta, periodicBorders);
+            current = advanceOneStep(current, L, rc, velocityModule, dt, eta, periodicBorders, withLeader);
         }
         exportFrame(framesDir, steps, steps * dt, current);
     }
@@ -69,7 +98,8 @@ public class AutomataOffLattice {
                                                  double velocityModule,
                                                  double dt,
                                                  double eta,
-                                                 boolean periodicBorders) {
+                                                 boolean periodicBorders,
+                                                 boolean withLeader) {
 
         CellIndexMethodNeighborFinder cim = new CellIndexMethodNeighborFinder(particles.size(), L, rc, periodicBorders, particles);
         cim.findNeighbors();
@@ -79,19 +109,25 @@ public class AutomataOffLattice {
         List<Particle> next = new ArrayList<>(particles.size());
 
         for (Particle p : particles) {
-            List<Particle> neighbors = neighborMap.getOrDefault(p, Collections.emptyList());
+            double newTheta;
+            if (withLeader && p.id() == LEADER_ID) {
+                // Leader: not affected by others, follows its own path (current direction, no noise).
+                newTheta = angle(p);
+            } else {
+                List<Particle> neighbors = neighborMap.getOrDefault(p, Collections.emptyList());
 
-            double sumSin = Math.sin(angle(p));
-            double sumCos = Math.cos(angle(p));
+                double sumSin = Math.sin(angle(p));
+                double sumCos = Math.cos(angle(p));
 
-            for (Particle n : neighbors) {
-                sumSin += Math.sin(angle(n));
-                sumCos += Math.cos(angle(n));
+                for (Particle n : neighbors) {
+                    sumSin += Math.sin(angle(n));
+                    sumCos += Math.cos(angle(n));
+                }
+
+                double avgTheta = Math.atan2(sumSin, sumCos);
+                double noise = (ThreadLocalRandom.current().nextDouble() - 0.5) * eta; // Uniform in [-eta/2, eta/2]
+                newTheta = avgTheta + noise;
             }
-
-            double avgTheta = Math.atan2(sumSin, sumCos);
-            double noise = (ThreadLocalRandom.current().nextDouble() - 0.5) * eta; // Uniform in [-eta/2, eta/2]
-            double newTheta = avgTheta + noise;
 
             double vx = velocityModule * Math.cos(newTheta);
             double vy = velocityModule * Math.sin(newTheta);
