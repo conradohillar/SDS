@@ -24,9 +24,10 @@ public class CellIndexMethodNeighborFinder {
         this.detectionRadius = rc;
         this.periodicBorders = periodicBorders;
 
-        this.particleNeighborsMap = new HashMap<>();
+        this.particleNeighborsMap = new HashMap<>((int) (N * 1.5));
         for (Particle p : particles) {
-            particleNeighborsMap.put(p, new ArrayList<>());
+            // Capacidad inicial razonable para evitar muchas realocaciones
+            particleNeighborsMap.put(p, new ArrayList<>(16));
         }
         int M = getMaxMValue(L, rc, particles);
         this.cellSideLength = L / M;
@@ -84,7 +85,8 @@ public class CellIndexMethodNeighborFinder {
             int i = Math.min((int) (p.x() / cellSideLength), cellAmount - 1);
             int j = Math.min((int) (p.y() / cellSideLength), cellAmount - 1);
             if (environmentGrid[i][j] == null) {
-                environmentGrid[i][j] = new ArrayList<>();
+                // Capacidad inicial pequeña para reducir realocaciones al llenar la celda
+                environmentGrid[i][j] = new ArrayList<>(8);
             }
             environmentGrid[i][j].add(p);
         }
