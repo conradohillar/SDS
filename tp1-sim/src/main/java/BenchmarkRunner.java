@@ -1,6 +1,8 @@
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 public class BenchmarkRunner {
@@ -22,7 +24,9 @@ public class BenchmarkRunner {
 
     public static void main(String[] args) throws IOException {
         long start = System.nanoTime();
-        String csvPath = ParticlePlotGenerator.BIN_PATH + "benchmark_results.csv";
+        Path binDir = ParticlePlotGenerator.DEFAULT_BIN_DIR;
+        Files.createDirectories(binDir);
+        String csvPath = binDir.resolve("benchmark_results.csv").toString();
 
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(csvPath))) {
             writer.write("N,method,run_index,time_ns");
@@ -33,11 +37,11 @@ public class BenchmarkRunner {
                 for (long N : NS) {
                     double L = Math.sqrt(N / TARGET_DENSITY);
                     ParticlePlotGenerator generator = new ParticlePlotGenerator(N, L, MIN_RADIUS, MAX_RADIUS,
-                            PERIODIC_BORDERS);
+                            PERIODIC_BORDERS,0);
                     generator.exportFiles();
 
-                    String staticPath = ParticlePlotGenerator.BIN_PATH + "static.txt";
-                    String dynamicPath = ParticlePlotGenerator.BIN_PATH + "dynamic.txt";
+                    String staticPath = generator.binFile("static.txt").toString();
+                    String dynamicPath = generator.binFile("dynamic.txt").toString();
                     StaticData sd = InputParser.parseStatic(staticPath);
                     DynamicData dd = InputParser.parseDynamic(dynamicPath);
                     List<Particle> particles = InputParser.buildParticles(sd, dd);
@@ -57,11 +61,11 @@ public class BenchmarkRunner {
                 for (long N : NS) {
                     double L = Math.sqrt(N / TARGET_DENSITY);
                     ParticlePlotGenerator generator = new ParticlePlotGenerator(N, L, MIN_RADIUS, MAX_RADIUS,
-                            PERIODIC_BORDERS);
+                            PERIODIC_BORDERS,0);
                     generator.exportFiles();
 
-                    String staticPath = ParticlePlotGenerator.BIN_PATH + "static.txt";
-                    String dynamicPath = ParticlePlotGenerator.BIN_PATH + "dynamic.txt";
+                    String staticPath = generator.binFile("static.txt").toString();
+                    String dynamicPath = generator.binFile("dynamic.txt").toString();
                     StaticData sd = InputParser.parseStatic(staticPath);
                     DynamicData dd = InputParser.parseDynamic(dynamicPath);
                     List<Particle> particles = InputParser.buildParticles(sd, dd);
@@ -97,4 +101,3 @@ public class BenchmarkRunner {
         writer.flush();
     }
 }
-
