@@ -12,6 +12,7 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <exec.mainClass>AutomataOffLattice</exec.mainClass>
     </properties>
     <dependencies>
         <dependency>
@@ -30,7 +31,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.6.2</version>
                 <configuration>
-                    <mainClass>AutomataOffLattice</mainClass>
+                    <mainClass>${exec.mainClass}</mainClass>
                     <includeProjectDependencies>true</includeProjectDependencies>
                     <classpathScope>runtime</classpathScope>
                     <additionalClasspathElements>
