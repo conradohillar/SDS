@@ -84,8 +84,8 @@ def main() -> None:
             color=color,
         )
 
-    ax.set_title("Polarización promedio (estacionario) vs eta")
-    ax.set_xlabel("eta")
+    ax.set_title("Polarización promedio vs η (L=10, ρ=4)")
+    ax.set_xlabel("η")
     ax.set_ylabel("polarización")
     ax.set_xlim(min(etas), max(etas))
     ax.set_ylim(0.0, 1.05)

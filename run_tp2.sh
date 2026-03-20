@@ -2,9 +2,9 @@
 set -euo pipefail
 
 # ---- Configuración (editar acá) ----
-MAX_FRAMES=300
-ETA=0.1
-LEADER_MODE="circular"   # "none" | "fixed" | "circular"
+MAX_FRAMES=600
+ETA=1
+LEADER_MODE="fixed"   # "none" | "fixed" | "circular"
 RENDER_MP4=true      # true | false
 MACRO_BLOCK_SIZE=1  # 1 avoids resizing warning; higher values improve compatibility
 
@@ -60,7 +60,7 @@ fi
 
 if [[ "$RENDER_MP4" == "true" ]]; then
   echo "Rendering MP4..."
-  MP4_OUT="$TP2_BIN_DIR/tp2_eta_${ETA}_${LEADER_MODE}.mp4"
+  MP4_OUT="$TP2_BIN_DIR/animations/tp2_eta_${ETA}_${LEADER_MODE}.mp4"
   python3 "$REPO_ROOT/tp2-vis/src/main/python/render_tp2_mp4.py" \
     --bin "$TP2_BIN_DIR" \
     --output "$MP4_OUT" \

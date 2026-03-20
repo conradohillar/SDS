@@ -163,15 +163,44 @@ def main() -> None:
                 uy = np.where(speed > 0, vy_arr / speed, 0.0)
             return ux * arrow_len, uy * arrow_len
 
-        # Setup figure (square like the benchmark plot).
-        fig, ax = plt.subplots(figsize=(7.0, 7.0))
+        def compute_polarization(vx_arr: np.ndarray, vy_arr: np.ndarray) -> float:
+            """
+            Polarization P(t) = | (1/N) * sum_i v_i / |v_i| |.
+            Returns a value in [0, 1].
+            """
+            speed = np.sqrt(vx_arr * vx_arr + vy_arr * vy_arr)
+            with np.errstate(divide="ignore", invalid="ignore"):
+                ux = np.where(speed > 0, vx_arr / speed, 0.0)
+                uy = np.where(speed > 0, vy_arr / speed, 0.0)
+            sx = float(np.sum(ux) / len(vx_arr))
+            sy = float(np.sum(uy) / len(vy_arr))
+            return float(np.sqrt(sx * sx + sy * sy))
+
+        # Preload frames (so we can compute polarization and render consistently).
+        frames = [parse_dynamic_single_frame(p, sd.n) for p in frame_files]
+        frame_count = len(frames)
+        steps = np.arange(frame_count, dtype=int)
+        pol_series = np.array([compute_polarization(np.array(df.vx, dtype=float),
+                                                     np.array(df.vy, dtype=float))
+                                for df in frames], dtype=float)
+
+        # Setup figure (two panels: arrows left, polarization right).
+        fig, (ax, ax_pol) = plt.subplots(
+            1, 2,
+            figsize=(12, 6.8),
+            gridspec_kw={"width_ratios": [3.2, 1.6]},
+        )
         fig.patch.set_facecolor("#0d1117")
         ax.set_facecolor("#0d1117")
+        ax_pol.set_facecolor("#0d1117")
         ax.set_xlim(0, sd.l)
         ax.set_ylim(0, sd.l)
         ax.set_aspect("equal")
         ax.tick_params(colors="#8b949e")
         for spine in ax.spines.values():
+            spine.set_edgecolor("#30363d")
+        ax_pol.tick_params(colors="#8b949e")
+        for spine in ax_pol.spines.values():
             spine.set_edgecolor("#30363d")
 
         boundary = patches.Rectangle(
@@ -181,7 +210,7 @@ def main() -> None:
         ax.add_patch(boundary)
 
         # Init from first frame.
-        f0 = parse_dynamic_single_frame(frame_files[0], sd.n)
+        f0 = frames[0]
         x = np.array(f0.x, dtype=float)
         y = np.array(f0.y, dtype=float)
         vx = np.array(f0.vx, dtype=float)
@@ -214,14 +243,36 @@ def main() -> None:
 
         eta_suffix = f" eta={args.eta:.3f}" if args.eta is not None else ""
         title = ax.set_title(
-            f"TP2 Off-Lattice — frame=1/{len(frame_files)} t={f0.t:.2f} N={sd.n} L={sd.l}{eta_suffix}",
+            f"TP2 Off-Lattice — frame=1/{frame_count} t={f0.t:.2f} N={sd.n} L={sd.l}{eta_suffix}",
             color="#e6edf3", fontsize=12, pad=12
         )
 
+        # Polarization plot (va vs step).
+        ax_pol.set_title("Polarizacion vs step", color="#e6edf3", fontsize=11, pad=10)
+        ax_pol.set_xlabel("step", color="#8b949e")
+        ax_pol.set_ylabel("va", color="#8b949e")
+        ax_pol.set_xlim(0, max(0, frame_count - 1))
+        ax_pol.set_ylim(0.0, 1.0)
+        ax_pol.grid(True, color="#30363d", alpha=0.35, linewidth=0.8)
+
+        pol_line, = ax_pol.plot(
+            steps, pol_series,
+            color="#58a6ff",
+            linewidth=2,
+        )
+        pol_marker, = ax_pol.plot(
+            [steps[0]], [pol_series[0]],
+            marker="o",
+            color="#2ea043",
+            markersize=7,
+            zorder=3,
+        )
+        pol_vline = ax_pol.axvline(steps[0], color="#8b949e", linewidth=1.2, alpha=0.75, zorder=2)
+
         render_start = time.perf_counter()
 
-        for idx, frame_path in enumerate(frame_files):
-            df = parse_dynamic_single_frame(frame_path, sd.n)
+        for idx in range(frame_count):
+            df = frames[idx]
             x = np.array(df.x, dtype=float)
             y = np.array(df.y, dtype=float)
             vx = np.array(df.vx, dtype=float)
@@ -246,8 +297,11 @@ def main() -> None:
             pts.set_facecolors(scols)
 
             title.set_text(
-                f"TP2 Off-Lattice — frame={idx + 1}/{len(frame_files)} t={df.t:.2f} N={sd.n} L={sd.l}{eta_suffix}"
+                f"TP2 Off-Lattice — frame={idx + 1}/{frame_count} t={df.t:.2f} N={sd.n} L={sd.l}{eta_suffix}"
             )
+
+            pol_marker.set_data([steps[idx]], [pol_series[idx]])
+            pol_vline.set_xdata([steps[idx], steps[idx]])
 
             fig.canvas.draw()
             # Convert canvas buffer -> ndarray for imageio.
