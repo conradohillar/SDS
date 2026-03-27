@@ -90,7 +90,7 @@ def main() -> None:
         with_legend: bool,
     ) -> None:
         # Cuadrado: mismo alto que ancho (pedido del benchmark).
-        fig, ax = plt.subplots(figsize=(7.0, 7.0))
+        fig, ax = plt.subplots(figsize=(7.0, 4.0))
 
         for leader_type, label, color in leaders:
             ys: list[float] = []

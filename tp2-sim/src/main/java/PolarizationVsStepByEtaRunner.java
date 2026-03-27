@@ -9,6 +9,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Polarizacion promedio vs step para eta = {0,1,2,3,4,5}.
@@ -61,6 +62,7 @@ public class PolarizationVsStepByEtaRunner {
         double etaStep = 1.0;
         long seedBase = System.nanoTime();
         int runsPerEta = 1;
+        double density = 4.0;
 
         LeaderType leaderType = LeaderType.NONE;
         boolean leaderFixedProvided = false;
@@ -82,13 +84,26 @@ public class PolarizationVsStepByEtaRunner {
 
         Map<String, String> argMap = parseArgs(args);
         steps = getLongOrDefault(argMap, "--steps", steps);
-        etaMin = getDoubleOrDefault(argMap, "--eta-min", etaMin);
-        etaMax = getDoubleOrDefault(argMap, "--eta-max", etaMax);
-        etaStep = getDoubleOrDefault(argMap, "--eta-step", etaStep);
+        boolean hasEtas = argMap.containsKey("--etas");
+        boolean hasEtaMin = argMap.containsKey("--eta-min");
+        boolean hasEtaMax = argMap.containsKey("--eta-max");
+        boolean hasEtaStep = argMap.containsKey("--eta-step");
+        if (hasEtas && (hasEtaMin || hasEtaMax || hasEtaStep)) {
+            throw new IllegalArgumentException("When using --etas, do not define --eta-min, --eta-max or --eta-step");
+        }
+        if (!hasEtas) {
+            etaMin = getDoubleOrDefault(argMap, "--eta-min", etaMin);
+            etaMax = getDoubleOrDefault(argMap, "--eta-max", etaMax);
+            etaStep = getDoubleOrDefault(argMap, "--eta-step", etaStep);
+        }
         seedBase = getLongOrDefault(argMap, "--seed-base", seedBase);
         runsPerEta = getIntOrDefault(argMap, "--runs-per-eta", runsPerEta);
+        density = getDoubleOrDefault(argMap, "--density", density);
         if (runsPerEta < 1) {
             throw new IllegalArgumentException("--runs-per-eta must be >= 1");
+        }
+        if (density <= 0.0) {
+            throw new IllegalArgumentException("--density must be > 0");
         }
 
         Path binDir = resolveBinPath();
@@ -97,8 +112,7 @@ public class PolarizationVsStepByEtaRunner {
         Path outCsv = binDir.resolve("polarization_vs_step_by_eta.csv");
 
         double L = 10.0;
-        int cellDensity = 4; // rho = 4 => N = L^2 * rho
-        long N = (long) Math.pow(L, 2) * cellDensity; // 400
+        long N = Math.round(Math.pow(L, 2) * density);
 
         double rc = 1.0;
         double dt = 1.0;
@@ -110,8 +124,23 @@ public class PolarizationVsStepByEtaRunner {
         double maxParticleRadius = 0.0;
         double property = 0.0;
 
-        List<Double> etas = generateEtaValues(etaMin, etaMax, etaStep);
+        List<Double> etas = hasEtas
+                ? parseEtaList(argMap.get("--etas"))
+                : generateEtaValues(etaMin, etaMax, etaStep);
         int etaCount = etas.size();
+
+        System.out.println("Running PolarizationVsStepByEtaRunner with parameters:");
+        System.out.printf(Locale.US, "  steps=%d%n", steps);
+        if (hasEtas) {
+            System.out.printf(Locale.US, "  etas=%s%n", etas);
+        } else {
+            System.out.printf(Locale.US, "  eta-min=%.6g, eta-max=%.6g, eta-step=%.6g%n", etaMin, etaMax, etaStep);
+            System.out.printf(Locale.US, "  generated-etas=%s%n", etas);
+        }
+        System.out.printf(Locale.US, "  density=%.6g%n", density);
+        System.out.printf(Locale.US, "  runs-per-eta=%d%n", runsPerEta);
+        System.out.printf(Locale.US, "  seed-base=%d%n", seedBase);
+        System.out.printf(Locale.US, "  leader=%s%n", leaderType);
 
         // Simulamos cada eta por separado (misma grilla, distintas semillas).
         // Guardamos una serie por (eta, run).
@@ -202,12 +231,35 @@ public class PolarizationVsStepByEtaRunner {
     }
 
     private static List<Double> generateEtaValues(double etaMin, double etaMax, double etaStep) {
+        if (etaStep <= 0.0) {
+            throw new IllegalArgumentException("--eta-step must be > 0");
+        }
+        if (etaMax < etaMin) {
+            throw new IllegalArgumentException("--eta-max must be >= --eta-min");
+        }
         int count = (int) Math.round((etaMax - etaMin) / etaStep);
         List<Double> etas = new ArrayList<>(count + 1);
         for (int i = 0; i <= count; i++) {
             etas.add(etaMin + i * etaStep);
         }
         etas.sort(Comparator.naturalOrder());
+        return etas;
+    }
+
+    private static List<Double> parseEtaList(String etaListRaw) {
+        if (etaListRaw == null || etaListRaw.isBlank()) {
+            throw new IllegalArgumentException("--etas must be a non-empty comma-separated list");
+        }
+
+        List<Double> etas = java.util.Arrays.stream(etaListRaw.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(Double::parseDouble)
+                .sorted()
+                .collect(Collectors.toList());
+        if (etas.isEmpty()) {
+            throw new IllegalArgumentException("--etas must include at least one eta value");
+        }
         return etas;
     }
 

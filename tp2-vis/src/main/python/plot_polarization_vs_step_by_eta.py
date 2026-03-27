@@ -102,7 +102,6 @@ def main() -> None:
             max(steps),
             facecolor="#b9f6ca",
             alpha=0.35,
-            label="estado estacionario",
         )
         ax.axvline(
             x=stationary_point,
