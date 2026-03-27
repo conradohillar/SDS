@@ -13,6 +13,11 @@ import java.util.Map;
 /**
  * Polarizacion promedio vs step para eta = {0,1,2,3,4,5}.
  *
+ * Soporta lider:
+ * - defecto (sin flags): `--leader-none` no aplica (equivale a `LeaderType.NONE`)
+ * - `--leader-fixed`: lider de direccion fija (id=1 no se alinea y sigue su direccion constante)
+ * - `--leader-circular`: lider con trayectoria circular deterministica (id=1 en circulo de radio R=5)
+ *
  * Cumple el pedido del usuario:
  * - Sim en un archivo Java.
  * - Vis en un archivo Python.
@@ -20,9 +25,33 @@ import java.util.Map;
  *
  * Output:
  * - tp2-bin/polarization_vs_step_by_eta.csv
- *   Columnas: step, eta_0, eta_1, ..., eta_5
+ *   Columnas: step, eta_<value>_run_<idx>, ...
  */
 public class PolarizationVsStepByEtaRunner {
+    private static final long LEADER_ID = 1L;
+
+    private enum LeaderType {
+        NONE,
+        FIXED_DIRECTION,
+        CIRCULAR_TRAJECTORY
+    }
+
+    private static final class CircularLeaderConfig {
+        private final double cx;
+        private final double cy;
+        private final double radius;
+        private final double phi0;   // phase at time t=0
+        private final double omega;  // angular velocity
+
+        private CircularLeaderConfig(double cx, double cy, double radius, double phi0, double omega) {
+            this.cx = cx;
+            this.cy = cy;
+            this.radius = radius;
+            this.phi0 = phi0;
+            this.omega = omega;
+        }
+    }
+
     public static void main(String[] args) throws IOException {
         Locale.setDefault(Locale.US);
 
@@ -31,6 +60,25 @@ public class PolarizationVsStepByEtaRunner {
         double etaMax = 5.0;
         double etaStep = 1.0;
         long seedBase = System.nanoTime();
+        int runsPerEta = 1;
+
+        LeaderType leaderType = LeaderType.NONE;
+        boolean leaderFixedProvided = false;
+        boolean leaderCircularProvided = false;
+        for (String arg : args) {
+            if ("--leader-fixed".equals(arg)) {
+                leaderFixedProvided = true;
+            } else if ("--leader-circular".equals(arg)) {
+                leaderCircularProvided = true;
+            }
+        }
+        if (leaderFixedProvided && leaderCircularProvided) {
+            throw new IllegalArgumentException("Use only one: --leader-fixed or --leader-circular");
+        } else if (leaderFixedProvided) {
+            leaderType = LeaderType.FIXED_DIRECTION;
+        } else if (leaderCircularProvided) {
+            leaderType = LeaderType.CIRCULAR_TRAJECTORY;
+        }
 
         Map<String, String> argMap = parseArgs(args);
         steps = getLongOrDefault(argMap, "--steps", steps);
@@ -38,6 +86,10 @@ public class PolarizationVsStepByEtaRunner {
         etaMax = getDoubleOrDefault(argMap, "--eta-max", etaMax);
         etaStep = getDoubleOrDefault(argMap, "--eta-step", etaStep);
         seedBase = getLongOrDefault(argMap, "--seed-base", seedBase);
+        runsPerEta = getIntOrDefault(argMap, "--runs-per-eta", runsPerEta);
+        if (runsPerEta < 1) {
+            throw new IllegalArgumentException("--runs-per-eta must be >= 1");
+        }
 
         Path binDir = resolveBinPath();
         Files.createDirectories(binDir);
@@ -62,44 +114,79 @@ public class PolarizationVsStepByEtaRunner {
         int etaCount = etas.size();
 
         // Simulamos cada eta por separado (misma grilla, distintas semillas).
-        // Guardamos una serie por eta.
-        double[][] vaSeries = new double[etaCount][(int) steps];
+        // Guardamos una serie por (eta, run).
+        double[][][] vaSeries = new double[etaCount][runsPerEta][(int) steps];
 
         for (int etaIdx = 0; etaIdx < etaCount; etaIdx++) {
             double eta = etas.get(etaIdx);
-            long seed = seedBase + etaIdx * 1_000_003L;
-            java.util.Random rng = new java.util.Random(seed);
+            for (int runIdx = 0; runIdx < runsPerEta; runIdx++) {
+                long seed = seedBase + etaIdx * 1_000_003L + runIdx * 10_000_019L;
+                java.util.Random rng = new java.util.Random(seed);
 
-            List<Particle> particles = generateInitialParticles(
-                    N, L, periodicBorders, velocityModule, minParticleRadius, maxParticleRadius, property, rng
-            );
-
-            List<Particle> current = particles;
-            for (int s = 0; s < steps; s++) {
-                vaSeries[etaIdx][s] = computePolarization(current);
-                double time = s * dt;
-                current = advanceOneStep(
-                        current, L, rc, velocityModule, dt, eta, periodicBorders, time, rng
+                List<Particle> particles = generateInitialParticles(
+                        N, L, periodicBorders, velocityModule, minParticleRadius, maxParticleRadius, property, rng
                 );
-            }
 
-            System.out.printf(Locale.US, "eta=%.3f done%n", eta);
+                CircularLeaderConfig circularLeaderConfig = null;
+                if (leaderType == LeaderType.CIRCULAR_TRAJECTORY) {
+                    // Enunciado: radio R=5, centro (L/2, L/2). Tangencial speed ~ velocityModule.
+                    double R = 5.0;
+                    double cx = L / 2.0;
+                    double cy = L / 2.0;
+                    double omega = velocityModule / R;
+                    double phi0 = rng.nextDouble() * 2.0 * Math.PI;
+
+                    // Override de lider id=1 con posicion/velocidad consistente con phi0.
+                    for (int i = 0; i < particles.size(); i++) {
+                        Particle p = particles.get(i);
+                        if (p.id() == LEADER_ID) {
+                            double x = cx + R * Math.cos(phi0);
+                            double y = cy + R * Math.sin(phi0);
+                            if (periodicBorders) {
+                                x = modPos(x, L);
+                                y = modPos(y, L);
+                            }
+                            double vx = -velocityModule * Math.sin(phi0);
+                            double vy = velocityModule * Math.cos(phi0);
+                            particles.set(i, new Particle(p.id(), x, y, vx, vy, p.radius(), p.property()));
+                            break;
+                        }
+                    }
+
+                    circularLeaderConfig = new CircularLeaderConfig(cx, cy, R, phi0, omega);
+                }
+
+                List<Particle> current = particles;
+                for (int s = 0; s < steps; s++) {
+                    vaSeries[etaIdx][runIdx][s] = computePolarization(current);
+                    double time = s * dt;
+                    current = advanceOneStep(
+                            current, L, rc, velocityModule, dt, eta, periodicBorders, leaderType, circularLeaderConfig, time, rng
+                    );
+                }
+
+                System.out.printf(Locale.US, "eta=%.3f run=%d/%d done%n", eta, runIdx + 1, runsPerEta);
+            }
         }
 
         // Escribir CSV ancho (wide):
-        // header: step, eta_<value>, ...
+        // header: step, eta_<value>_run_<idx>, ...
         try (BufferedWriter w = new BufferedWriter(new FileWriter(outCsv.toFile()))) {
             w.write("step");
             for (int etaIdx = 0; etaIdx < etaCount; etaIdx++) {
-                // Use actual eta value in the column name so plotting can label correctly.
-                w.write(String.format(Locale.US, ",eta_%.6g", etas.get(etaIdx)));
+                for (int runIdx = 0; runIdx < runsPerEta; runIdx++) {
+                    // Use eta/run in the column name so plotting can group same-eta series by color.
+                    w.write(String.format(Locale.US, ",eta_%.6g_run_%d", etas.get(etaIdx), runIdx + 1));
+                }
             }
             w.newLine();
 
             for (int s = 0; s < steps; s++) {
                 w.write(Integer.toString(s));
                 for (int etaIdx = 0; etaIdx < etaCount; etaIdx++) {
-                    w.write(String.format(Locale.US, ",%.12f", vaSeries[etaIdx][s]));
+                    for (int runIdx = 0; runIdx < runsPerEta; runIdx++) {
+                        w.write(String.format(Locale.US, ",%.12f", vaSeries[etaIdx][runIdx][s]));
+                    }
                 }
                 w.newLine();
             }
@@ -111,6 +198,7 @@ public class PolarizationVsStepByEtaRunner {
         for (int i = 0; i < etaCount; i++) {
             System.out.printf(Locale.US, "  %d -> %.3f%n", i, etas.get(i));
         }
+        System.out.printf(Locale.US, "runs-per-eta=%d%n", runsPerEta);
     }
 
     private static List<Double> generateEtaValues(double etaMin, double etaMax, double etaStep) {
@@ -155,6 +243,8 @@ public class PolarizationVsStepByEtaRunner {
                                                  double dt,
                                                  double eta,
                                                  boolean periodicBorders,
+                                                 LeaderType leaderType,
+                                                 CircularLeaderConfig circularLeaderConfig,
                                                  double time,
                                                  java.util.Random rng) {
         // Vecinos del estado actual (t).
@@ -165,7 +255,49 @@ public class PolarizationVsStepByEtaRunner {
         List<Particle> next = new ArrayList<>(particles.size());
 
         for (Particle p : particles) {
-            // Leader NONE: no hay caso especial.
+            if (p.id() == LEADER_ID && leaderType == LeaderType.CIRCULAR_TRAJECTORY) {
+                // Actualizacion deterministica circular: usa theta(t+dt) como en AutomataOffLattice.
+                double nextTime = time + dt;
+                double theta = circularLeaderConfig.phi0 + circularLeaderConfig.omega * nextTime;
+
+                double newX = circularLeaderConfig.cx + circularLeaderConfig.radius * Math.cos(theta);
+                double newY = circularLeaderConfig.cy + circularLeaderConfig.radius * Math.sin(theta);
+
+                double vx = -velocityModule * Math.sin(theta);
+                double vy = velocityModule * Math.cos(theta);
+
+                if (periodicBorders) {
+                    newX = modPos(newX, L);
+                    newY = modPos(newY, L);
+                } else {
+                    newX = Math.max(0.0, Math.min(L, newX));
+                    newY = Math.max(0.0, Math.min(L, newY));
+                }
+
+                next.add(new Particle(p.id(), newX, newY, vx, vy, p.radius(), p.property()));
+                continue;
+            }
+
+            if (p.id() == LEADER_ID && leaderType == LeaderType.FIXED_DIRECTION) {
+                // Direccion fija: el lider no se alinea con vecinos, sigue su direccion constante.
+                double newTheta = angle(p);
+                double vx = velocityModule * Math.cos(newTheta);
+                double vy = velocityModule * Math.sin(newTheta);
+
+                double newX = p.x() + vx * dt;
+                double newY = p.y() + vy * dt;
+
+                if (periodicBorders) {
+                    newX = modPos(newX, L);
+                    newY = modPos(newY, L);
+                } else {
+                    newX = Math.max(0.0, Math.min(L, newX));
+                    newY = Math.max(0.0, Math.min(L, newY));
+                }
+
+                next.add(new Particle(p.id(), newX, newY, vx, vy, p.radius(), p.property()));
+                continue;
+            }
 
             // Standard Vicsek update.
             List<Particle> neighbors = neighborMap.getOrDefault(p, List.of());
@@ -271,6 +403,12 @@ public class PolarizationVsStepByEtaRunner {
         String v = map.get(key);
         if (v == null) return defaultValue;
         return Double.parseDouble(v);
+    }
+
+    private static int getIntOrDefault(Map<String, String> map, String key, int defaultValue) {
+        String v = map.get(key);
+        if (v == null) return defaultValue;
+        return Integer.parseInt(v);
     }
 }
 

@@ -2,13 +2,13 @@
 set -euo pipefail
 
 # ---- Configuración (editar acá) ----
-MAX_FRAMES=600
-ETA=1
-LEADER_MODE="fixed"   # "none" | "fixed" | "circular"
+MAX_FRAMES=1000
+ETA=3
+LEADER_MODE="none"   # "none" | "fixed" | "circular"
 RENDER_MP4=true      # true | false
 MACRO_BLOCK_SIZE=1  # 1 avoids resizing warning; higher values improve compatibility
 
-FPS=30
+FPS=50
 ARROW_LEN=0.35
 
 # ---- Paths ----

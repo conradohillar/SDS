@@ -145,7 +145,8 @@ def main() -> None:
             raise SystemExit(f"No frame_*.txt files found in {frames_dir}")
 
         leader_idx = (args.leader_id - 1) if args.leader_id is not None and 1 <= args.leader_id <= sd.n else None
-        leader_rgba = to_rgba("#ffffff")
+        # Leader should stand out on a white background without being pure black.
+        leader_rgba = to_rgba("#444444")  # dark gray
         leader_scale = 1.5  # 50% larger arrow + leader dot
         scatter_alphas = np.full(sd.n, 0.15, dtype=float)
         if leader_idx is not None:
@@ -190,22 +191,29 @@ def main() -> None:
             figsize=(12, 6.8),
             gridspec_kw={"width_ratios": [3.2, 1.6]},
         )
-        fig.patch.set_facecolor("#0d1117")
-        ax.set_facecolor("#0d1117")
-        ax_pol.set_facecolor("#0d1117")
+        # White background theme + dark text for video export.
+        bg = "#ffffff"
+        fg = "#111111"
+        muted = "#444444"
+        grid = "#d0d7de"
+        spine_color = "#6e7781"
+
+        fig.patch.set_facecolor(bg)
+        ax.set_facecolor(bg)
+        ax_pol.set_facecolor(bg)
         ax.set_xlim(0, sd.l)
         ax.set_ylim(0, sd.l)
         ax.set_aspect("equal")
-        ax.tick_params(colors="#8b949e")
-        for spine in ax.spines.values():
-            spine.set_edgecolor("#30363d")
-        ax_pol.tick_params(colors="#8b949e")
-        for spine in ax_pol.spines.values():
-            spine.set_edgecolor("#30363d")
+        ax.tick_params(colors=muted)
+        for sp in ax.spines.values():
+            sp.set_edgecolor(spine_color)
+        ax_pol.tick_params(colors=muted)
+        for sp in ax_pol.spines.values():
+            sp.set_edgecolor(spine_color)
 
         boundary = patches.Rectangle(
             (0, 0), sd.l, sd.l,
-            linewidth=1.5, edgecolor="#30363d", facecolor="none", zorder=1
+            linewidth=1.5, edgecolor=spine_color, facecolor="none", zorder=1
         )
         ax.add_patch(boundary)
 
@@ -244,20 +252,20 @@ def main() -> None:
         eta_suffix = f" eta={args.eta:.3f}" if args.eta is not None else ""
         title = ax.set_title(
             f"TP2 Off-Lattice — frame=1/{frame_count} t={f0.t:.2f} N={sd.n} L={sd.l}{eta_suffix}",
-            color="#e6edf3", fontsize=12, pad=12
+            color=fg, fontsize=12, pad=12
         )
 
         # Polarization plot (va vs step).
-        ax_pol.set_title("Polarizacion vs step", color="#e6edf3", fontsize=11, pad=10)
-        ax_pol.set_xlabel("step", color="#8b949e")
-        ax_pol.set_ylabel("va", color="#8b949e")
+        ax_pol.set_title("Polarización vs tiempo", color=fg, fontsize=11, pad=10)
+        ax_pol.set_xlabel("tiempo (step)", color=muted)
+        ax_pol.set_ylabel(r"polarización ($\mathrm{v}_a$)", color=muted)
         ax_pol.set_xlim(0, max(0, frame_count - 1))
         ax_pol.set_ylim(0.0, 1.0)
-        ax_pol.grid(True, color="#30363d", alpha=0.35, linewidth=0.8)
+        ax_pol.grid(True, color=grid, alpha=0.9, linewidth=0.8)
 
         pol_line, = ax_pol.plot(
             steps, pol_series,
-            color="#58a6ff",
+            color="#0969da",
             linewidth=2,
         )
         pol_marker, = ax_pol.plot(
@@ -297,7 +305,7 @@ def main() -> None:
             pts.set_facecolors(scols)
 
             title.set_text(
-                f"TP2 Off-Lattice — frame={idx + 1}/{frame_count} t={df.t:.2f} N={sd.n} L={sd.l}{eta_suffix}"
+                f"step={idx + 1}/{frame_count} N={sd.n} L={sd.l}{eta_suffix}"
             )
 
             pol_marker.set_data([steps[idx]], [pol_series[idx]])
