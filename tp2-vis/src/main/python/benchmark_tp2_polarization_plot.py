@@ -69,15 +69,20 @@ def main() -> None:
 
     data = load_summary(summary_path)
 
-    leader_order = [
+    all_leader_styles = [
         ("none", "Sin líder", "tab:blue"),
         ("fixed", "Líder fijo", "tab:orange"),
         ("circular", "Líder circular", "tab:green"),
     ]
 
+    present_leaders = {lt for (_, lt) in data.keys()}
+    leader_order = [entry for entry in all_leader_styles if entry[0] in present_leaders]
+
     etas = sorted({eta for (eta, _) in data.keys()})
     if not etas:
         raise SystemExit("No data found in summary CSV.")
+    if not leader_order:
+        raise SystemExit("No recognized leader types in summary CSV.")
 
     out_dir = os.path.abspath(args.output_dir) if args.output_dir else None
     if out_dir:
@@ -126,7 +131,6 @@ def main() -> None:
             fig.savefig(out_path, dpi=200)
             print(f"Saved: {out_path}")
 
-    # 3 gráficos separados (uno por escenario de líder)
     for leader_type, label, _color in leader_order:
         plot_figure(
             leaders=[next(lo for lo in leader_order if lo[0] == leader_type)],
@@ -135,13 +139,13 @@ def main() -> None:
             with_legend=False,
         )
 
-    # gráfico compuesto (los 3 escenarios)
-    plot_figure(
-        leaders=leader_order,
-        title="Polarización promedio vs η",
-        out_name=f"{args.prefix}_all.png" if out_dir else None,
-        with_legend=True,
-    )
+    if len(leader_order) > 1:
+        plot_figure(
+            leaders=leader_order,
+            title="Polarización promedio vs η",
+            out_name=f"{args.prefix}_all.png" if out_dir else None,
+            with_legend=True,
+        )
 
     if args.show or not out_dir:
         plt.show()

@@ -15,15 +15,13 @@ import java.util.concurrent.ThreadLocalRandom;
 /**
  * Bench de polarizacion vs eta para el Vicsek off-lattice (TP2).
  *
- * Cumple el enunciado:
- * - 10 corridas por tipo de lider (ninguno, fijo, circular) y por valor de eta
- * - 500 steps
- * - descarta primeros 250 steps (transitorio) y promedia polarizacion en el resto
- * - calcula media y desviacion estandar entre corridas
+ * Una unica simulacion de 5000 steps por cada (eta, leader_type).
+ * Descarta los primeros pasos (transitorio) y calcula media y desvio
+ * estandar de la polarizacion sobre los steps restantes (estado estacionario).
  *
  * Output:
- * - tp2-bin/benchmark_polarization_summary.csv
- * - tp2-bin/benchmark_polarization_per_run.csv
+ * - tp2-bin/benchmark_polarization_summary.csv   (eta, leader_type, mean, std)
+ * - tp2-bin/benchmark_polarization_per_step.csv   (eta, leader_type, step, polarization)
  */
 public class BenchmarkRunner {
     private static final long LEADER_ID = 1L;
@@ -53,92 +51,133 @@ public class BenchmarkRunner {
     private static final class Params {
         private final long maxFrames;
         private final long discardFrames;
-        private final int runsPerSetting;
         private final double etaMin;
         private final double etaMax;
         private final double etaStep;
+        private final int density;
+        private final List<LeaderType> leaderTypes;
 
-        private Params(long maxFrames, long discardFrames, int runsPerSetting, double etaMin, double etaMax, double etaStep) {
+        private Params(long maxFrames, long discardFrames, double etaMin, double etaMax, double etaStep,
+                        int density, List<LeaderType> leaderTypes) {
             this.maxFrames = maxFrames;
             this.discardFrames = discardFrames;
-            this.runsPerSetting = runsPerSetting;
             this.etaMin = etaMin;
             this.etaMax = etaMax;
             this.etaStep = etaStep;
+            this.density = density;
+            this.leaderTypes = leaderTypes;
         }
+    }
+
+    private static List<LeaderType> parseLeaderTypes(String value) {
+        List<LeaderType> types = new ArrayList<>();
+        for (String token : value.split(",")) {
+            switch (token.trim().toLowerCase(Locale.US)) {
+                case "none" -> types.add(LeaderType.NONE);
+                case "fixed" -> types.add(LeaderType.FIXED_DIRECTION);
+                case "circular" -> types.add(LeaderType.CIRCULAR_TRAJECTORY);
+                default -> throw new IllegalArgumentException("Unknown leader type: " + token.trim()
+                        + ". Valid values: none, fixed, circular");
+            }
+        }
+        if (types.isEmpty()) {
+            throw new IllegalArgumentException("--leader requires at least one type (none, fixed, circular)");
+        }
+        return types;
     }
 
     public static void main(String[] args) throws IOException {
         Locale.setDefault(Locale.US);
 
-        // Defaults alineados al pedido del usuario/enunciado.
+        Map<String, String> argMap = parseArgs(args);
+
+        List<LeaderType> leaderTypes = argMap.containsKey("--leader")
+                ? parseLeaderTypes(argMap.get("--leader"))
+                : List.of(LeaderType.NONE, LeaderType.FIXED_DIRECTION, LeaderType.CIRCULAR_TRAJECTORY);
+
         Params params = new Params(
-                500L,   // 500 steps
-                250L,   // descartar primeras 250
-                10,     // 10 corridas
-                0.0,    // eta desde 0
-                5.0,    // eta hasta 5
-                0.25    // salto 0.25
+                getLongOrDefault(argMap, "--max-frames", 5000L),
+                getLongOrDefault(argMap, "--discard-frames", 1000L),
+                getDoubleOrDefault(argMap, "--eta-min", 0.0),
+                getDoubleOrDefault(argMap, "--eta-max", 5.0),
+                getDoubleOrDefault(argMap, "--eta-step", 0.25),
+                getIntOrDefault(argMap, "--density", 4),
+                leaderTypes
         );
 
-        Map<String, String> argMap = parseArgs(args);
-        params = new Params(
-                getLongOrDefault(argMap, "--max-frames", params.maxFrames),
-                getLongOrDefault(argMap, "--discard-frames", params.discardFrames),
-                getIntOrDefault(argMap, "--runs-per-eta", params.runsPerSetting),
-                getDoubleOrDefault(argMap, "--eta-min", params.etaMin),
-                getDoubleOrDefault(argMap, "--eta-max", params.etaMax),
-                getDoubleOrDefault(argMap, "--eta-step", params.etaStep)
-        );
+        System.out.printf(Locale.US,
+                "Config: steps=%d discard=%d eta=[%.2f..%.2f step=%.2f] density=%d leaders=%s%n",
+                params.maxFrames, params.discardFrames,
+                params.etaMin, params.etaMax, params.etaStep,
+                params.density,
+                params.leaderTypes.stream().map(BenchmarkRunner::leaderTypeKey).toList());
 
         Path binDir = resolveBinPath();
         Files.createDirectories(binDir);
 
-        Path perRunCsv = binDir.resolve("benchmark_polarization_per_run.csv");
+        Path perStepCsv = binDir.resolve("benchmark_polarization_per_step.csv");
         Path summaryCsv = binDir.resolve("benchmark_polarization_summary.csv");
 
         long totalStartNs = System.nanoTime();
 
-        // Ejecutar y guardar polarizacion media por corrida.
-        try (BufferedWriter perRunWriter = new BufferedWriter(new FileWriter(perRunCsv.toFile()));
+        try (BufferedWriter perStepWriter = new BufferedWriter(new FileWriter(perStepCsv.toFile()));
              BufferedWriter summaryWriter = new BufferedWriter(new FileWriter(summaryCsv.toFile()))) {
 
-            perRunWriter.write("eta,leader_type,run_index,polarization_mean");
-            perRunWriter.newLine();
+            perStepWriter.write("eta,leader_type,step,polarization");
+            perStepWriter.newLine();
 
             summaryWriter.write("eta,leader_type,mean_polarization,std_polarization");
             summaryWriter.newLine();
 
             for (double eta : generateEtaValues(params.etaMin, params.etaMax, params.etaStep)) {
-                for (LeaderType leaderType : List.of(LeaderType.NONE, LeaderType.FIXED_DIRECTION, LeaderType.CIRCULAR_TRAJECTORY)) {
+                for (LeaderType leaderType : params.leaderTypes) {
                     long comboStartNs = System.nanoTime();
-                    double[] runMeans = new double[params.runsPerSetting];
 
-                    for (int runIndex = 0; runIndex < params.runsPerSetting; runIndex++) {
-                        double runMean = runOneSimulationAndMeasure(
-                                eta, leaderType, params.maxFrames, params.discardFrames
-                        );
-                        runMeans[runIndex] = runMean;
-                        perRunWriter.write(String.format(Locale.US, "%.8f,%s,%d,%.12f",
-                                eta, leaderTypeKey(leaderType), runIndex, runMean));
-                        perRunWriter.newLine();
+                    double[] polPerStep = runOneSimulation(eta, leaderType, params.maxFrames, params.density);
+
+                    for (int step = 0; step < polPerStep.length; step++) {
+                        perStepWriter.write(String.format(Locale.US, "%.8f,%s,%d,%.12f",
+                                eta, leaderTypeKey(leaderType), step, polPerStep[step]));
+                        perStepWriter.newLine();
                     }
 
-                    double mean = mean(runMeans);
-                    double std = stdSample(runMeans, mean);
+                    int steadyStart = (int) Math.min(params.discardFrames, polPerStep.length);
+                    int steadyCount = polPerStep.length - steadyStart;
+
+                    double mean = 0.0;
+                    double std = 0.0;
+                    if (steadyCount > 0) {
+                        double sum = 0.0;
+                        for (int i = steadyStart; i < polPerStep.length; i++) {
+                            sum += polPerStep[i];
+                        }
+                        mean = sum / steadyCount;
+
+                        if (steadyCount > 1) {
+                            double sumSq = 0.0;
+                            for (int i = steadyStart; i < polPerStep.length; i++) {
+                                double d = polPerStep[i] - mean;
+                                sumSq += d * d;
+                            }
+                            std = Math.sqrt(sumSq / (steadyCount - 1));
+                        }
+                    }
+
                     summaryWriter.write(String.format(Locale.US, "%.8f,%s,%.12f,%.12f",
                             eta, leaderTypeKey(leaderType), mean, std));
                     summaryWriter.newLine();
 
-                    perRunWriter.flush();
+                    perStepWriter.flush();
                     summaryWriter.flush();
 
                     long comboElapsedNs = System.nanoTime() - comboStartNs;
                     System.out.printf(
                             Locale.US,
-                            "eta=%.3f leader=%s finished in %.3f s%n",
+                            "eta=%.3f leader=%-8s  mean=%.6f std=%.6f  (%.3f s)%n",
                             eta,
                             leaderTypeKey(leaderType),
+                            mean,
+                            std,
                             comboElapsedNs / 1_000_000_000.0
                     );
                 }
@@ -149,27 +188,26 @@ public class BenchmarkRunner {
         System.out.printf(Locale.US, "TOTAL benchmark time: %.3f s%n", totalElapsedNs / 1_000_000_000.0);
     }
 
-    private static double runOneSimulationAndMeasure(double eta,
-                                                      LeaderType leaderType,
-                                                      long maxFrames,
-                                                      long discardFrames) {
-        // Configuracion fija segun AutomataOffLattice / enunciado.
+    /**
+     * Corre una unica simulacion de {@code maxFrames} steps y devuelve
+     * la polarizacion medida en cada step (array de longitud maxFrames).
+     */
+    private static double[] runOneSimulation(double eta,
+                                              LeaderType leaderType,
+                                              long maxFrames,
+                                              int density) {
         double L = 10.0;
-        int cellDensity = 4;
-        long N = (long) Math.pow(L, 2) * cellDensity; // 400
+        long N = (long) (L * L) * density;
 
         double rc = 1.0;
         double dt = 1.0;
         boolean periodicBorders = true;
         double velocityModule = 0.03;
 
-        // En AutomataOffLattice: minParticleRadius=maxParticleRadius=0 => radios y props en 0.
         double minParticleRadius = 0.0;
         double maxParticleRadius = 0.0;
         double property = 0.0;
 
-        // Seed por corrida (para que cada run tenga configuracion distinta).
-        // Usamos ThreadLocalRandom para no traer java.util.Random y reducir code duplication.
         long seed = ThreadLocalRandom.current().nextLong();
         java.util.Random rng = new java.util.Random(seed);
 
@@ -177,14 +215,12 @@ public class BenchmarkRunner {
 
         CircularLeaderConfig circularLeaderConfig = null;
         if (leaderType == LeaderType.CIRCULAR_TRAJECTORY) {
-            // Enunciado: radio R=5; centro de libre elección. Elegimos (L/2, L/2) como en AutomataOffLattice.
             double R = 5.0;
             double cx = L / 2.0;
             double cy = L / 2.0;
-            double omega = velocityModule / R; // tangencial ~ v0
+            double omega = velocityModule / R;
             double phi0 = rng.nextDouble() * 2.0 * Math.PI;
 
-            // Override de lider id=1 con la posicion/velocidad consistente con phi0.
             for (int i = 0; i < particles.size(); i++) {
                 Particle p = particles.get(i);
                 if (p.id() == LEADER_ID) {
@@ -203,22 +239,17 @@ public class BenchmarkRunner {
             circularLeaderConfig = new CircularLeaderConfig(cx, cy, R, phi0, omega);
         }
 
-        long measuredCount = 0L;
-        double polSum = 0.0;
+        int totalSteps = (int) maxFrames;
+        double[] polPerStep = new double[totalSteps];
 
         List<Particle> current = particles;
-        for (long step = 0; step < maxFrames; step++) {
-            double pol = computePolarization(current);
-            if (step >= discardFrames) {
-                polSum += pol;
-                measuredCount++;
-            }
-
+        for (int step = 0; step < totalSteps; step++) {
+            polPerStep[step] = computePolarization(current);
             double time = step * dt;
             current = advanceOneStep(current, L, rc, velocityModule, dt, eta, periodicBorders, leaderType, circularLeaderConfig, time, rng);
         }
 
-        return measuredCount > 0 ? polSum / measuredCount : 0.0;
+        return polPerStep;
     }
 
     private static List<Particle> generateInitialParticles(long N,
@@ -368,24 +399,6 @@ public class BenchmarkRunner {
 
     private static double modPos(double x, double L) {
         return ((x % L) + L) % L;
-    }
-
-    private static double mean(double[] values) {
-        double sum = 0.0;
-        for (double v : values) {
-            sum += v;
-        }
-        return sum / values.length;
-    }
-
-    private static double stdSample(double[] values, double mean) {
-        if (values.length <= 1) return 0.0;
-        double sum = 0.0;
-        for (double v : values) {
-            double d = v - mean;
-            sum += d * d;
-        }
-        return Math.sqrt(sum / (values.length - 1));
     }
 
     private static String leaderTypeKey(LeaderType leaderType) {

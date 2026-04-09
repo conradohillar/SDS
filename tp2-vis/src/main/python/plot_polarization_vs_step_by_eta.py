@@ -1,7 +1,7 @@
 import argparse
 import csv
 import os
-import re
+from collections import defaultdict
 
 
 def _default_bin_dir() -> str:
@@ -12,16 +12,57 @@ def _default_bin_dir() -> str:
     return os.path.abspath(os.path.join(cwd, "..", "tp2-bin"))
 
 
+LEADER_LABELS = {
+    "none": "Sin líder",
+    "fixed": "Líder fijo",
+    "circular": "Líder circular",
+}
+
+
+def load_per_step_csv(path: str) -> dict[str, dict[float, tuple[list[int], list[float]]]]:
+    """
+    Reads benchmark_polarization_per_step.csv (long format):
+        eta,leader_type,step,polarization
+
+    Returns {leader_type: {eta: (steps[], polarizations[])}}.
+    """
+    data: dict[str, dict[float, tuple[list[int], list[float]]]] = defaultdict(lambda: defaultdict(lambda: ([], [])))
+
+    with open(path, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            if not row:
+                continue
+            leader = row["leader_type"].strip()
+            eta = float(row["eta"])
+            step = int(row["step"])
+            pol = float(row["polarization"])
+            steps_list, pol_list = data[leader][eta]
+            steps_list.append(step)
+            pol_list.append(pol)
+
+    return dict(data)
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Plot va(step) for eta=0..5 as colored lines.")
-    parser.add_argument("--bin", default=_default_bin_dir(), help="Directory containing polarization CSV.")
-    parser.add_argument("--csv", default="polarization_vs_step_by_eta.csv", help="Input CSV filename.")
-    parser.add_argument("--output", default=None, help="Optional PNG output path. If omitted, shows plot.")
+    parser = argparse.ArgumentParser(
+        description="Plot polarización vs step por eta (desde benchmark_polarization_per_step.csv)."
+    )
+    parser.add_argument("--bin", default=_default_bin_dir(), help="Directory containing CSV.")
+    parser.add_argument("--csv", default="benchmark_polarization_per_step.csv", help="Input CSV filename.")
+    parser.add_argument("--output-dir", default=None, help="Save PNGs to this directory.")
+    parser.add_argument("--prefix", default="polarization_vs_step", help="Filename prefix for PNGs.")
+    parser.add_argument("--show", action="store_true", help="Show plots interactively.")
+    parser.add_argument(
+        "--leader",
+        default=None,
+        help="Comma-separated leader types to plot (e.g. none,circular). Default: all in data.",
+    )
     parser.add_argument(
         "--stationary-point",
         type=float,
         default=None,
-        help="If provided, draw a vertical line at step=STATIONARY_POINT.",
+        help="Draw a vertical line at this step to mark the stationary regime.",
     )
     args = parser.parse_args()
 
@@ -36,99 +77,71 @@ def main() -> None:
     except ModuleNotFoundError as e:
         raise SystemExit("matplotlib is required. Install it with: pip install matplotlib") from e
 
-    steps: list[int] = []
-    series: dict[str, list[float]] = {}
+    data = load_per_step_csv(csv_path)
 
-    with open(csv_path, "r", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        fieldnames = reader.fieldnames or []
-        eta_fields = [fn for fn in fieldnames if fn.startswith("eta_")]
+    if not data:
+        raise SystemExit("No data found in CSV.")
 
-        for fn in eta_fields:
-            series[fn] = []
+    if args.leader:
+        requested = [t.strip() for t in args.leader.split(",")]
+        data = {k: v for k, v in data.items() if k in requested}
+        if not data:
+            raise SystemExit(f"No data for leader types: {args.leader}")
 
-        for row in reader:
-            if not row:
-                continue
-            steps.append(int(row["step"]))
-            for fn in eta_fields:
-                series[fn].append(float(row[fn]))
+    out_dir = os.path.abspath(args.output_dir) if args.output_dir else None
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
 
-    if not series:
-        raise SystemExit("No eta_* columns found in CSV header.")
+    for leader_type, eta_series in sorted(data.items()):
+        fig, ax = plt.subplots(figsize=(7.0, 3.5))
 
-    fig, ax = plt.subplots(figsize=(7.0, 3.5))
+        sorted_etas = sorted(eta_series.keys())
+        cmap = plt.get_cmap("tab10")
+        colors = {eta: cmap(i % 10) for i, eta in enumerate(sorted_etas)}
 
-    def parse_eta_and_run_from_col(col: str) -> tuple[float, int]:
-        # Accepted formats:
-        # - eta_<value>
-        # - eta_<value>_run_<idx>
-        m = re.fullmatch(r"eta_([0-9eE+\-.]+)(?:_run_(\d+))?", col)
-        if not m:
-            raise ValueError(f"Invalid eta column name: {col}")
-        eta_val = float(m.group(1))
-        run_idx = int(m.group(2)) if m.group(2) is not None else 1
-        return eta_val, run_idx
+        for eta in sorted_etas:
+            steps, pols = eta_series[eta]
+            ax.plot(
+                steps,
+                pols,
+                linewidth=1.4,
+                color=colors[eta],
+                alpha=0.85,
+                label=rf"$\eta={eta:g}$",
+            )
 
-    ordered_series = sorted(
-        series.items(),
-        key=lambda kv: parse_eta_and_run_from_col(kv[0]),
-    )
-    unique_etas = sorted({parse_eta_and_run_from_col(col)[0] for col in series.keys()})
-    cmap = plt.get_cmap("tab10")
-    color_by_eta = {eta: cmap(i % 10) for i, eta in enumerate(unique_etas)}
-    label_drawn: set[float] = set()
+        if args.stationary_point is not None:
+            sp = float(args.stationary_point)
+            all_steps = [s for ss, _ in eta_series.values() for s in ss]
+            ax.axvspan(sp, max(all_steps), facecolor="#b9f6ca", alpha=0.35)
+            ax.axvline(
+                x=sp,
+                color="#39ff14",
+                linewidth=1.6,
+                linestyle="--",
+                alpha=0.9,
+                label=f"límite estacionario = {sp:g}",
+            )
 
-    # One line per run; runs with same eta share color.
-    for eta_col, ys in ordered_series:
-        eta_val, run_idx = parse_eta_and_run_from_col(eta_col)
-        color = color_by_eta[eta_val]
-        label = rf"$\eta={eta_val:g}$" if eta_val not in label_drawn else None
-        label_drawn.add(eta_val)
-        ax.plot(
-            steps,
-            ys,
-            linewidth=1.8,
-            color=color,
-            alpha=0.9 if run_idx == 1 else 0.55,
-            label=label,
-        )
+        label = LEADER_LABELS.get(leader_type, leader_type)
+        ax.set_title(f"Polarización vs tiempo — {label}")
+        ax.set_xlabel("tiempo (step)")
+        ax.set_ylabel(r"polarización ($v_{a}$)")
+        all_steps = [s for ss, _ in eta_series.values() for s in ss]
+        ax.set_xlim(min(all_steps), max(all_steps))
+        ax.set_ylim(0.0, 1.05)
+        ax.grid(True, alpha=0.3)
+        ax.legend(fontsize=8, ncol=2)
+        fig.tight_layout()
 
-    if args.stationary_point is not None:
-        stationary_point = float(args.stationary_point)
-        # Highlight the stationary regime to the right of the threshold.
-        ax.axvspan(
-            stationary_point,
-            max(steps),
-            facecolor="#b9f6ca",
-            alpha=0.35,
-        )
-        ax.axvline(
-            x=stationary_point,
-            color="#39ff14",  # neon green
-            linewidth=1.6,
-            linestyle="--",
-            alpha=0.9,
-            label=f"límite estacionario = {args.stationary_point:g}",
-        )
+        if out_dir:
+            out_path = os.path.join(out_dir, f"{args.prefix}_{leader_type}.png")
+            fig.savefig(out_path, dpi=200)
+            print(f"Saved: {out_path}")
 
-    ax.set_title("Polarización vs tiempo")
-    ax.set_xlabel("tiempo (step)")
-    ax.set_ylabel(r"polarización ($v_{a}$)")
-    ax.set_xlim(min(steps), max(steps))
-    ax.set_ylim(0.0, 1.05)
-    ax.grid(True, alpha=0.3)
-    ax.legend()
-    fig.tight_layout()
-
-    if args.output:
-        out_path = os.path.abspath(args.output)
-        fig.savefig(out_path, dpi=200)
-        print(f"Saved: {out_path}")
-    else:
+    if args.show or not out_dir:
         plt.show()
 
 
 if __name__ == "__main__":
     main()
-
