@@ -3,11 +3,11 @@
 # Corre EventDrivenMD (Java) con frames para cada N y realización, luego grafica.
 set -euo pipefail
 
-N_VALUES=(25 50 100 200)
-REALIZATIONS=3
-TF=200.0
+N_VALUES=(100 200 300 400 500)
+REALIZATIONS=1
+TF=2000.0
 FRAME_EVERY=5
-MAX_FRAMES=5000
+MAX_FRAMES=10000
 BASE_SEED=$(date +%s)
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -32,4 +32,5 @@ done
 
 echo ""
 echo "Generating plots …"
-python3 "$REPO_ROOT/tp3-vis/src/main/python/analysis_radial.py" --bin-dir "$BIN_DIR"
+python3 "$REPO_ROOT/tp3-vis/src/main/python/analysis_radial.py" \
+    --bin-dir "$BIN_DIR" --n-values "${N_VALUES[@]}"

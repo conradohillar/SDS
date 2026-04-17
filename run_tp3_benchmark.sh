@@ -3,8 +3,8 @@
 # Corre BenchmarkRunner (Java) y luego grafica con analysis_benchmark.py.
 set -euo pipefail
 
-BENCH_TF=5.0
-BENCH_RUNS=20
+BENCH_TF=50.0
+BENCH_RUNS=1
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SIM_DIR="$REPO_ROOT/tp3-sim"

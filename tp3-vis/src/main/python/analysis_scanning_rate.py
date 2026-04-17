@@ -20,7 +20,8 @@ import matplotlib.cm as cm
 
 
 # ── Configuration ──────────────────────────────────────────────────────────────
-N_VALUES = list(range(100, 900, 100))
+N_VALUES = list(range(50, 501, 50))
+TRANSIENT_TIME = 1000  # seconds; data before this is considered non-stationary
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -81,11 +82,13 @@ def main():
     n_vals  = a.n_values or N_VALUES
     sr_root = os.path.join(bin_root, "scanning_rate")
 
-    J_means   = []
-    J_stds    = []
-    tss_vals  = []
-    fest_vals = []
-    fu_curves = {}
+    J_means    = []
+    J_stds     = []
+    tss_vals   = []
+    fest_vals  = []
+    fest_stds  = []
+    fu_curves  = {}
+    cfc_curves = {}  # {n: list of (t, cfc) arrays, one per realization}
 
     for n in n_vals:
         print(f"\nN = {n}")
@@ -93,7 +96,7 @@ def main():
         if not os.path.isdir(n_dir):
             print(f"  WARNING: {n_dir} not found, skipping")
             J_means.append(0); J_stds.append(0)
-            tss_vals.append(0); fest_vals.append(0)
+            tss_vals.append(0); fest_vals.append(0); fest_stds.append(0)
             fu_curves[n] = None
             continue
 
@@ -104,7 +107,7 @@ def main():
         if not r_dirs:
             print(f"  WARNING: no realization dirs in {n_dir}, skipping")
             J_means.append(0); J_stds.append(0)
-            tss_vals.append(0); fest_vals.append(0)
+            tss_vals.append(0); fest_vals.append(0); fest_stds.append(0)
             fu_curves[n] = None
             continue
 
@@ -112,6 +115,7 @@ def main():
         tss_list       = []
         fest_list      = []
         fu_interp_list = []
+        cfc_list       = []
 
         for r_dir in r_dirs:
             print(f"  loading {r_dir.name} … ", end="", flush=True)
@@ -127,10 +131,14 @@ def main():
             fu  = nu / n
             tf  = float(t[-1])
 
+            cfc_list.append((t, cfc))
             J_list.append(linear_slope(t, cfc))
             tss, fest = steady_state(t, fu)
             tss_list.append(tss)
-            fest_list.append(fest)
+            # steady-state estimate: mean of Fu where t >= TRANSIENT_TIME
+            mask_ss = t >= TRANSIENT_TIME
+            fest_ss = float(np.mean(fu[mask_ss])) if mask_ss.any() else fest
+            fest_list.append(fest_ss)
 
             t_common  = np.linspace(0, tf, 500)
             fu_interp = np.interp(t_common, t, fu)
@@ -143,7 +151,13 @@ def main():
             J_means.append(0); J_stds.append(0)
 
         tss_vals.append(np.mean(tss_list) if tss_list else 0)
-        fest_vals.append(np.mean(fest_list) if fest_list else 0)
+        if fest_list:
+            fest_vals.append(np.mean(fest_list))
+            fest_stds.append(np.std(fest_list, ddof=1) / np.sqrt(len(fest_list)) if len(fest_list) > 1 else 0)
+        else:
+            fest_vals.append(0); fest_stds.append(0)
+
+        cfc_curves[n] = cfc_list
 
         if fu_interp_list:
             tf_min   = min(tc[-1] for tc, _ in fu_interp_list)
@@ -160,8 +174,8 @@ def main():
     ax12.errorbar(n_arr, J_means, yerr=J_stds, fmt="o-",
                   color="#3498db", capsize=5, lw=2, ms=7, elinewidth=1.5)
     ax12.set_xlabel("N (número de partículas)", fontsize=13)
-    ax12.set_ylabel("Scanning rate  J  [eventos/s]", fontsize=13)
-    ax12.set_title("1.2 – Scanning rate ⟨J⟩ vs N", fontsize=14)
+    ax12.set_ylabel("J [eventos/s]", fontsize=13)
+    ax12.set_title("1.2 – Velocidad de escaneo ⟨J⟩ vs N", fontsize=14)
     ax12.grid(True, ls="--", alpha=0.5)
     plt.tight_layout()
     out12 = os.path.join(img_dir, "scanning_rate.png")
@@ -171,19 +185,26 @@ def main():
     # ── Plot 1.3: Fu(t) per N + steady-state markers ─────────────────────────
     fig13, ax13 = plt.subplots(figsize=(8, 5))
     colors = cm.plasma(np.linspace(0.1, 0.9, len(n_vals)))
+
+    # transient shading
+    ax13.axvspan(0, TRANSIENT_TIME, color="red", alpha=0.08, zorder=0)
+    ax13.axvline(TRANSIENT_TIME, color="red", lw=1.2, ls="--", alpha=0.6, zorder=1)
+
     for i, n in enumerate(n_vals):
         curve = fu_curves.get(n)
         if curve is None:
             continue
         t_c, fu_c = curve
-        ax13.plot(t_c, fu_c, lw=2, color=colors[i], label=f"N={n}")
-        if fest_vals[i] > 0:
-            ax13.axhline(fest_vals[i], color=colors[i], ls=":", lw=1, alpha=0.7)
-            ax13.axvline(tss_vals[i],  color=colors[i], ls="--", lw=1, alpha=0.7)
+        ax13.plot(t_c, fu_c, lw=2, color=colors[i], label=f"N={n}", zorder=2)
 
-    ax13.set_xlabel("Tiempo [s]", fontsize=13)
-    ax13.set_ylabel("Fu(t) = Nu(t)/N", fontsize=13)
-    ax13.set_title("1.3 – Evolución temporal de la fracción de partículas usadas", fontsize=13)
+        # steady-state horizontal line (no label)
+        fest_n = fest_vals[i]
+        if fest_n > 0:
+            ax13.axhline(fest_n, color=colors[i], lw=1.0, ls=":", alpha=0.8, zorder=1)
+
+    ax13.set_xlabel("t [s]", fontsize=13)
+    ax13.set_ylabel(r"$F_u(t)$", fontsize=13)
+    ax13.set_title("Evolución temporal de la fracción de partículas usadas", fontsize=13)
     ax13.legend(fontsize=10)
     ax13.set_ylim(0.0, 0.2)
     ax13.grid(True, ls="--", alpha=0.5)
@@ -191,6 +212,57 @@ def main():
     out13 = os.path.join(img_dir, "fu_evolution.png")
     plt.savefig(out13, dpi=150)
     print(f"Saved → {out13}")
+
+    # ── Plot: Fu_ss vs N ──────────────────────────────────────────────────────
+    fig_ss, ax_ss = plt.subplots(figsize=(7, 5))
+    ax_ss.errorbar(n_arr, fest_vals, yerr=fest_stds, fmt="o-",
+                   color="#e74c3c", capsize=5, lw=2, ms=3, elinewidth=1.5)
+    ax_ss.set_xlabel("N", fontsize=13)
+    ax_ss.set_ylabel(r"$\langle F_u^{ss} \rangle$", fontsize=13)
+    ax_ss.set_title(r"Valor estacionario de $F_u$ en función de $N$", fontsize=13)
+    ax_ss.grid(True, ls="--", alpha=0.5)
+    plt.tight_layout()
+    out_ss = os.path.join(img_dir, "fu_stationary_vs_N.png")
+    plt.savefig(out_ss, dpi=150)
+    print(f"Saved → {out_ss}")
+
+    # ── Plot: Cfc(t) mean ± std + linear fit for N=50 and N=500 (superimposed)
+    palette      = {50: "#3498db", 500: "#e67e22"}
+    fit_palette  = {50: "#e74c3c", 500: "#27ae60"}
+    fig_c, ax_c = plt.subplots(figsize=(8, 5))
+    for n_cfc in [50, 500]:
+        runs = cfc_curves.get(n_cfc)
+        if not runs:
+            continue
+        j_idx  = n_vals.index(n_cfc)
+        J_mean = J_means[j_idx]
+        color  = palette[n_cfc]
+
+        tf_min   = min(t_r[-1] for t_r, _ in runs)
+        t_common = np.linspace(0, tf_min, 1000)
+        cfc_mat  = np.array([np.interp(t_common, t_r, c_r) for t_r, c_r in runs])
+        cfc_mean = cfc_mat.mean(axis=0)
+        cfc_std  = cfc_mat.std(axis=0, ddof=1)
+
+        b     = float(np.mean(cfc_mean - J_mean * t_common))
+        t_fit = np.array([t_common[0], t_common[-1]])
+
+        ax_c.fill_between(t_common, cfc_mean - cfc_std, cfc_mean + cfc_std,
+                          color=color, alpha=0.2)
+        ax_c.plot(t_common, cfc_mean, color=color, lw=2, label=f"N={n_cfc}")
+        ax_c.plot(t_fit, J_mean * t_fit + b, color=fit_palette[n_cfc], lw=0.9, ls="--")
+
+    ax_c.set_xlim(0, 3000)
+    ax_c.set_xlabel("t [s]", fontsize=13)
+    ax_c.set_ylabel(r"$C_{fc}(t)$", fontsize=13)
+    ax_c.set_title(r"Colisiones acumuladas $C_{fc}(t)$", fontsize=13)
+    ax_c.legend(fontsize=11)
+    ax_c.grid(True, ls="--", alpha=0.5)
+    plt.tight_layout()
+    out_c = os.path.join(img_dir, "cfc_evolution.png")
+    plt.savefig(out_c, dpi=150)
+    print(f"Saved → {out_c}")
+
     plt.close("all")
 
     # ── Summary table ─────────────────────────────────────────────────────────

@@ -3,9 +3,9 @@
 # Corre EventDrivenMD (Java) para cada N y realización, luego grafica.
 set -euo pipefail
 
-N_VALUES=(100 200 300 400)
+N_VALUES=(50 100 150 200 250 300 350 400 450 500)
 REALIZATIONS=10
-TF=1000.0
+TF=5000.0
 BASE_SEED=$(date +%s)
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -29,4 +29,5 @@ done
 
 echo ""
 echo "Generating plots …"
-python3 "$REPO_ROOT/tp3-vis/src/main/python/analysis_scanning_rate.py" --bin-dir "$BIN_DIR"
+python3 "$REPO_ROOT/tp3-vis/src/main/python/analysis_scanning_rate.py" \
+    --bin-dir "$BIN_DIR" --n-values "${N_VALUES[@]}"

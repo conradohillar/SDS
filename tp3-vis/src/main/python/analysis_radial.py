@@ -172,23 +172,44 @@ def main():
 
     colors = cm.plasma(np.linspace(0.1, 0.9, len(n_vals)))
 
-    # ── Plot radial profiles for each N ───────────────────────────────────────
-    for i, n in enumerate(n_vals):
-        if n not in rho_profiles:
-            continue
+    # ── Plot radial profiles: one figure per quantity, all N overlaid ────────
+    curve_defs = [
+        ("rho", r"$\langle\rho_f^{in}\rangle(S)$", rho_profiles),
+        ("v",   r"$|\langle v_f^{in}\rangle(S)|$",  vel_profiles),
+        ("Jin", r"$J_{in}(S)$",                     jin_profiles),
+    ]
+    for fname, ylabel, profiles in curve_defs:
         fig, ax = plt.subplots(figsize=(8, 5))
-        ax.plot(s_centres, rho_profiles[n], lw=2, color="#3498db", label=r"$\langle\rho_f^{in}\rangle(S)$")
-        ax.plot(s_centres, vel_profiles[n], lw=2, color="#2ecc71", label=r"$|\langle v_f^{in}\rangle(S)|$")
-        ax.plot(s_centres, jin_profiles[n], lw=2, color="#e74c3c", label=r"$J_{in}(S)$", ls="--")
-        ax.set_xlabel("S  [m]", fontsize=13)
-        ax.set_ylabel("Magnitud", fontsize=13)
-        ax.set_title(f"1.4 – Perfiles radiales de partículas frescas  (N={n})", fontsize=13)
+        for i, n in enumerate(n_vals):
+            if n not in profiles:
+                continue
+            ax.plot(s_centres, profiles[n], lw=2, color=colors[i], label=f"N={n}")
+        ax.set_xlabel("S [m]", fontsize=13)
+        ax.set_ylabel(ylabel, fontsize=13)
+        ax.set_title(ylabel, fontsize=13)
         ax.legend(fontsize=11)
         ax.grid(True, ls="--", alpha=0.4)
         plt.tight_layout()
-        out_path = os.path.join(img_dir, f"radial_profile_N{n}.png")
+        out_path = os.path.join(img_dir, f"{fname}_vs_S.png")
         plt.savefig(out_path, dpi=150)
+        plt.close(fig)
         print(f"Saved → {out_path}")
+
+    # ── Plot 1.4: rho(S) for all N overlaid ──────────────────────────────────
+    fig_rho, ax_rho = plt.subplots(figsize=(8, 5))
+    for i, n in enumerate(n_vals):
+        if n not in rho_profiles:
+            continue
+        ax_rho.plot(s_centres, rho_profiles[n], lw=2, color=colors[i], label=f"N={n}")
+    ax_rho.set_xlabel("S [m]", fontsize=13)
+    ax_rho.set_ylabel(r"$\rho(S)$", fontsize=13)
+    ax_rho.set_title(r"Perfil radial de densidad $\rho(S)$", fontsize=13)
+    ax_rho.legend(fontsize=11)
+    ax_rho.grid(True, ls="--", alpha=0.4)
+    plt.tight_layout()
+    out_rho = os.path.join(img_dir, "rho_vs_S.png")
+    plt.savefig(out_rho, dpi=150)
+    print(f"Saved → {out_rho}")
 
     # ── Plot J_in, rho, v at S≈S_TARGET vs N ─────────────────────────────────
     n_plot = [n for n in n_vals if n in jin_at_target]
