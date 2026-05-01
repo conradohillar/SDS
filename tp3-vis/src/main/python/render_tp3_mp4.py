@@ -48,12 +48,13 @@ def parse_frame(path, n):
     return t, x, y, pvx, pvy, st
 
 
-def load_frames(frames_dir, n):
+def load_frames(frames_dir, n, skip_time=0.0):
     files = sorted(f for f in os.listdir(frames_dir) if re.match(r"frame_\d+\.txt$", f))
-    return [parse_frame(os.path.join(frames_dir, f), n) for f in files]
+    frames = [parse_frame(os.path.join(frames_dir, f), n) for f in files]
+    return [fr for fr in frames if fr[0] >= skip_time]
 
 
-def render(bin_dir, output, fps, arrow_len, macro_block_size):
+def render(bin_dir, output, fps, arrow_len, macro_block_size, skip_time=0.0):
     meta     = parse_metadata(os.path.join(bin_dir, "metadata.txt"))
     N        = int(meta["N"])
     R_domain = float(meta["R_domain"])
@@ -61,11 +62,11 @@ def render(bin_dir, output, fps, arrow_len, macro_block_size):
     R_part   = float(meta["R_particle"])
 
     frames_dir = os.path.join(bin_dir, "frames")
-    frames = load_frames(frames_dir, N)
+    frames = load_frames(frames_dir, N, skip_time)
     if not frames:
         print("No frames found"); return
 
-    fig, ax = plt.subplots(figsize=(7, 7), dpi=120)
+    fig, ax = plt.subplots(figsize=(10, 10), dpi=200)
     ax.set_aspect("equal")
     pad = 2
     ax.set_xlim(-R_domain-pad, R_domain+pad)
@@ -84,8 +85,8 @@ def render(bin_dir, output, fps, arrow_len, macro_block_size):
 
     time_txt    = ax.text(0.02, 0.97, "", transform=ax.transAxes, color="white", fontsize=11, va="top", family="monospace")
     counter_txt = ax.text(0.02, 0.92, "", transform=ax.transAxes, color="white", fontsize=10, va="top")
-    ax.legend(handles=[mpatches.Patch(color=C_FRESH, label="Fresh"),
-                        mpatches.Patch(color=C_USED,  label="Used")],
+    ax.legend(handles=[mpatches.Patch(color=C_FRESH, label="Frescas"),
+                        mpatches.Patch(color=C_USED,  label="Usadas")],
               loc="upper right", facecolor="#2c2c2c", labelcolor="white", fontsize=9)
 
     def update(idx):
@@ -95,14 +96,19 @@ def render(bin_dir, output, fps, arrow_len, macro_block_size):
             c.center = (x[i], y[i]); c.set_color(C_FRESH if st[i]==0 else C_USED)
         quiv.set_offsets(np.c_[x,y]); quiv.set_UVC(pvx*arrow_len, pvy*arrow_len)
         time_txt.set_text(f"t = {t:.3f} s")
-        counter_txt.set_text(f"Used: {n_used}/{N}")
+        counter_txt.set_text(f"Usadas: {n_used}/{N}")
         return circles + [quiv, time_txt, counter_txt]
 
     anim = FuncAnimation(fig, update, frames=len(frames), interval=1000/fps, blit=False)
     os.makedirs(os.path.dirname(os.path.abspath(output)), exist_ok=True)
-    writer = FFMpegWriter(fps=fps, metadata={"title": "TP3 EDM"}, bitrate=2000,
-                          extra_args=["-vf", f"scale=trunc(iw/{macro_block_size})*{macro_block_size}:trunc(ih/{macro_block_size})*{macro_block_size}",
-                                      "-pix_fmt", "yuv420p"])
+    writer = FFMpegWriter(fps=fps, metadata={"title": "TP3 EDM"}, bitrate=-1,
+                          extra_args=[
+                              "-vcodec", "libx264",
+                              "-crf", "18",
+                              "-preset", "slow",
+                              "-vf", f"scale=trunc(iw/{macro_block_size})*{macro_block_size}:trunc(ih/{macro_block_size})*{macro_block_size}",
+                              "-pix_fmt", "yuv420p",
+                          ])
     print(f"Rendering {len(frames)} frames to {output} ...")
     anim.save(output, writer=writer)
     print("Done.")
@@ -121,6 +127,7 @@ if __name__ == "__main__":
     ap.add_argument("--fps",              type=float, default=30)
     ap.add_argument("--arrow-len",        type=float, default=1.5)
     ap.add_argument("--macro-block-size", type=int,   default=1)
+    ap.add_argument("--skip-time",        type=float, default=0.0, help="Skip frames with t < this value [s]")
     a = ap.parse_args()
     bin_dir = os.path.abspath(a.bin) if a.bin else _default_bin()
-    render(bin_dir, a.output, a.fps, a.arrow_len, a.macro_block_size)
+    render(bin_dir, a.output, a.fps, a.arrow_len, a.macro_block_size, a.skip_time)

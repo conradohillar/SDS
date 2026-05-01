@@ -5,15 +5,16 @@
 set -euo pipefail
 
 # ── Configuration (edit here) ─────────────────────────────────────────────────
-N=100           # number of particles
+N=400           # number of particles
 SEED=$RANDOM    # random seed (randomized each run)
-TF=1000.0        # simulation end time [s]
-MAX_FRAMES=2000 # animation frame cap  (0 = no frames)
-FRAME_EVERY=5  # write a frame every N events
-RENDER_MP4=false
+TF=2200.0        # simulation end time [s]
+MAX_FRAMES=10000 # animation frame cap  (0 = no frames)
+FRAME_EVERY=50  # write a frame every N events
+RENDER_MP4=true
 FPS=60
 ARROW_LEN=1.5
 MACRO_BLOCK_SIZE=1   # set to 2 to avoid ffmpeg rescaling warnings
+SKIP_TIME=2000        # skip frames with t < SKIP_TIME in the animation
 
 # ── Paths (auto-resolved, do not normally need editing) ───────────────────────
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -43,7 +44,8 @@ if [[ "$RENDER_MP4" == "true" ]]; then
         --output "$MP4_OUT" \
         --fps    "$FPS" \
         --arrow-len "$ARROW_LEN" \
-        --macro-block-size "$MACRO_BLOCK_SIZE"
+        --macro-block-size "$MACRO_BLOCK_SIZE" \
+        --skip-time "$SKIP_TIME"
 fi
 
 # ── Interactive visualizer ────────────────────────────────────────────────────
@@ -51,4 +53,5 @@ echo "Launching visualizer …"
 python3 "$TP3_VIS_PY" \
     --bin       "$TP3_BIN_DIR" \
     --fps       "$FPS" \
-    --arrow-len "$ARROW_LEN"
+    --arrow-len "$ARROW_LEN" \
+    --skip-time "$SKIP_TIME"

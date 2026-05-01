@@ -20,8 +20,10 @@ import matplotlib.cm as cm
 
 
 # ── Configuration ──────────────────────────────────────────────────────────────
-N_VALUES = list(range(50, 501, 50))
-TRANSIENT_TIME = 1000  # seconds; data before this is considered non-stationary
+N_VALUES = list(range(50, 801, 50))
+TRANSIENT_TIME = 1000  # seconds; used for J and fest_ss computation
+FU_PLOT_N_VALUES = [100, 200, 400, 800]  # N values shown in fu_evolution plot
+FU_TRANSIENT_TIME = 2000  # stationary cutoff used in fu_evolution plot
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -183,24 +185,26 @@ def main():
     print(f"\nSaved → {out12}")
 
     # ── Plot 1.3: Fu(t) per N + steady-state markers ─────────────────────────
+    fu_plot_ns = [n for n in FU_PLOT_N_VALUES if n in n_vals]
     fig13, ax13 = plt.subplots(figsize=(8, 5))
-    colors = cm.plasma(np.linspace(0.1, 0.9, len(n_vals)))
+    colors13 = cm.plasma(np.linspace(0.1, 0.9, len(fu_plot_ns)))
 
-    # transient shading
-    ax13.axvspan(0, TRANSIENT_TIME, color="red", alpha=0.08, zorder=0)
-    ax13.axvline(TRANSIENT_TIME, color="red", lw=1.2, ls="--", alpha=0.6, zorder=1)
+    # transient shading up to FU_TRANSIENT_TIME
+    ax13.axvspan(0, FU_TRANSIENT_TIME, color="red", alpha=0.08, zorder=0)
+    ax13.axvline(FU_TRANSIENT_TIME, color="red", lw=1.2, ls="--", alpha=0.6, zorder=1)
 
-    for i, n in enumerate(n_vals):
+    for i, n in enumerate(fu_plot_ns):
         curve = fu_curves.get(n)
         if curve is None:
             continue
         t_c, fu_c = curve
-        ax13.plot(t_c, fu_c, lw=2, color=colors[i], label=f"N={n}", zorder=2)
+        ax13.plot(t_c, fu_c, lw=2, color=colors13[i], label=f"N={n}", zorder=2)
 
-        # steady-state horizontal line (no label)
-        fest_n = fest_vals[i]
+        # steady-state horizontal line computed from t >= FU_TRANSIENT_TIME
+        mask_fu = t_c >= FU_TRANSIENT_TIME
+        fest_n = float(np.mean(fu_c[mask_fu])) if mask_fu.any() else float(np.mean(fu_c))
         if fest_n > 0:
-            ax13.axhline(fest_n, color=colors[i], lw=1.0, ls=":", alpha=0.8, zorder=1)
+            ax13.axhline(fest_n, color=colors13[i], lw=1.0, ls=":", alpha=0.8, zorder=1)
 
     ax13.set_xlabel("t [s]", fontsize=13)
     ax13.set_ylabel(r"$F_u(t)$", fontsize=13)

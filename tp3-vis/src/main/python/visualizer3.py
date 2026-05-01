@@ -58,14 +58,15 @@ def parse_frame(path: str, n: int):
     return t, x, y, pvx, pvy, st
 
 
-def load_frames(frames_dir: str, n: int):
+def load_frames(frames_dir: str, n: int, skip_time: float = 0.0):
     files = sorted(f for f in os.listdir(frames_dir) if re.match(r"frame_\d+\.txt$", f))
-    return [parse_frame(os.path.join(frames_dir, f), n) for f in files]
+    frames = [parse_frame(os.path.join(frames_dir, f), n) for f in files]
+    return [fr for fr in frames if fr[0] >= skip_time]
 
 
 # ── Animation ─────────────────────────────────────────────────────────────────
 
-def animate(bin_dir: str, fps: float, arrow_len: float):
+def animate(bin_dir: str, fps: float, arrow_len: float, skip_time: float = 0.0):
     meta = parse_metadata(os.path.join(bin_dir, "metadata.txt"))
     N        = int(meta["N"])
     R_domain = float(meta["R_domain"])
@@ -73,7 +74,7 @@ def animate(bin_dir: str, fps: float, arrow_len: float):
     R_part   = float(meta["R_particle"])
 
     frames_dir = os.path.join(bin_dir, "frames")
-    frames = load_frames(frames_dir, N)
+    frames = load_frames(frames_dir, N, skip_time)
     if not frames:
         print(f"No frame files found in {frames_dir}")
         return
@@ -155,8 +156,9 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser(description="TP3 visualizer – circular EDM")
     ap.add_argument("--bin",       default=None,  help="Path to tp3-bin directory")
     ap.add_argument("--fps",       type=float, default=30,  help="Animation FPS")
-    ap.add_argument("--arrow-len", type=float, default=1.5, help="Arrow scaling factor")
+    ap.add_argument("--arrow-len",  type=float, default=1.5, help="Arrow scaling factor")
+    ap.add_argument("--skip-time",  type=float, default=0.0, help="Skip frames with t < this value [s]")
     a = ap.parse_args()
 
     bin_dir = os.path.abspath(a.bin) if a.bin else _default_bin()
-    animate(bin_dir, a.fps, a.arrow_len)
+    animate(bin_dir, a.fps, a.arrow_len, a.skip_time)

@@ -39,11 +39,22 @@ def plot(data: list[tuple[int, float]], out: str):
     ns = np.array([d[0] for d in data])
     ts = np.array([d[1] for d in data])
 
+    # Exponential fit: t = a * exp(b * N)  →  log(t) = log(a) + b*N
+    coeffs = np.polyfit(ns, np.log(ts), 1)
+    b, log_a = coeffs
+    a = np.exp(log_a)
+    ns_fit = np.linspace(ns.min(), ns.max(), 300)
+    ts_fit = a * np.exp(b * ns_fit)
+    label_fit = rf"$a\,e^{{bN}}$,  $a={a:.3g}$,  $b={b:.3g}$"
+    print(f"Exponential fit: a={a:.6g}, b={b:.6g}  →  t = {a:.3g} * exp({b:.3g} * N)")
+
     fig, ax = plt.subplots(figsize=(9, 5))
-    ax.plot(ns, ts, "o-", color="#3498db", lw=2, ms=6)
-    ax.set_xlabel("N (número de partículas)", fontsize=13)
-    ax.set_ylabel("Tiempo de ejecución [s]", fontsize=13)
+    ax.plot(ns, ts, "o", color="#3498db", lw=2, ms=6, label="Datos simulación")
+    ax.plot(ns_fit, ts_fit, "--", color="#e74c3c", lw=2, label=label_fit)
+    ax.set_xlabel("N", fontsize=13)
+    ax.set_ylabel("t [s]", fontsize=13)
     ax.set_title("1.1 – Tiempo de cómputo vs N  (tf = 5 s)", fontsize=14)
+    ax.legend(fontsize=11)
     ax.grid(True, ls="--", alpha=0.5)
     plt.tight_layout()
     plt.savefig(out, dpi=150)
