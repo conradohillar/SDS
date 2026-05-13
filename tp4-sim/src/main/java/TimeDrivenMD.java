@@ -97,8 +97,7 @@ public class TimeDrivenMD {
             }
             if (ok) {
                 x[placed] = xi; y[placed] = yi;
-                // random velocity direction, speed ~ sqrt(k/m)*sigma/10 ≈ small
-                double speed = 0.1 * Math.sqrt(k / MASS) * R_PARTICLE;
+                double speed = 1.0;
                 double vAngle = rng.nextDouble() * 2 * Math.PI;
                 vx[placed] = speed * Math.cos(vAngle);
                 vy[placed] = speed * Math.sin(vAngle);
