@@ -12,7 +12,7 @@ VIS_DIR="$REPO_ROOT/tp4-vis/src/main/python"
 N_VALUES="${N_VALUES:-100 200 300 400 500 600 700 800 900 1000}"
 REALIZATIONS="${REALIZATIONS:-10}"
 TF="${TF:-5000.0}"
-DT="${DT:-0.01}"
+DT="${DT:-0.001}"
 DT2="${DT2:-50.0}"
 K="${K:-1000.0}"
 
@@ -23,9 +23,10 @@ for n in $N_VALUES; do
     for r in $(seq 0 $((REALIZATIONS - 1))); do
         RUN_ID="runs/N${n}/r${r}"
         echo "N=$n  realization=$r  run-id=$RUN_ID"
+        SEED=$(( RANDOM * 32768 + RANDOM ))
         (cd "$SIM_DIR" && mvn -q exec:java \
             -Dexec.mainClass=TimeDrivenMD \
-            "-Dexec.args=--n $n --seed $r --dt $DT --tf $TF --dt2 $DT2 \
+            "-Dexec.args=--n $n --seed $SEED --dt $DT --tf $TF --dt2 $DT2 \
                          --k $K --cim --bin $BIN_DIR --run-id $RUN_ID")
     done
 done
