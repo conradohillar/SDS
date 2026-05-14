@@ -3,10 +3,10 @@ import java.nio.file.*;
 import java.util.*;
 
 /**
- * TP4 Benchmark – wall-clock time vs N for Time-Driven MD.
+ * TP4 Benchmark – wall-clock time vs N, comparing brute-force O(N²) vs CIM O(N).
  *
- * Runs TimeDrivenMD.run() (no I/O) for each N value, averaging over
- * multiple realizations. Prints "N time_s" pairs to stdout.
+ * Runs both modes for each N, averaging over multiple realizations.
+ * Writes results_nocim.txt and results_cim.txt to the output directory.
  *
  * CLI:
  *   --tf   <double>  simulation time (default 5.0)
@@ -18,13 +18,13 @@ import java.util.*;
 public class BenchmarkRunner {
 
     static final int[] N_VALUES = {
-        100, 200, 300, 400, 500, 600, 700, 800
+        100, 200, 300, 400, 500, 600, 700, 800, 900, 1000
     };
 
     public static void main(String[] args) throws IOException {
         double tf   = 5.0;
         double dt   = 0.01;
-        int    runs = 10;
+        int    runs = 5;
         double k    = 1000.0;
         String bin  = resolveBin();
 
@@ -40,38 +40,49 @@ public class BenchmarkRunner {
 
         Path outDir = Paths.get(bin);
         Files.createDirectories(outDir);
+        Path tmp = outDir.resolve("_tmp");
 
         System.out.printf("# TP4 Benchmark  tf=%.1f  dt=%.2e  runs=%d%n", tf, dt, runs);
-        System.out.println("# N  wall_time_s");
+        System.out.println("# N  brute_s  cim_s");
 
-        try (PrintWriter w = new PrintWriter(Files.newBufferedWriter(outDir.resolve("results.txt")))) {
-            w.println("N wall_time_s");
+        try (PrintWriter wNoCim = new PrintWriter(Files.newBufferedWriter(outDir.resolve("results_nocim.txt")));
+             PrintWriter wCim   = new PrintWriter(Files.newBufferedWriter(outDir.resolve("results_cim.txt")))) {
+
+            wNoCim.println("N wall_time_s");
+            wCim  .println("N wall_time_s");
 
             for (int n : N_VALUES) {
-                // warm-up
-                Path tmp = outDir.resolve("_tmp");
-                TimeDrivenMD.run(n, 0L, dt, 0.1, 1.0, k, 0, true, true, tmp);
+                // warm-up (both modes)
+                TimeDrivenMD.run(n, 0L, dt, 0.1, 1.0, k, 0, true, true, false, tmp);
+                TimeDrivenMD.run(n, 0L, dt, 0.1, 1.0, k, 0, true, true, true,  tmp);
 
-                double total = 0;
+                double totalBrute = 0, totalCim = 0;
                 for (int r = 0; r < runs; r++) {
                     long t0 = System.nanoTime();
-                    TimeDrivenMD.run(n, r, dt, tf, tf + 1, k, 0, true, true, tmp);
-                    total += (System.nanoTime() - t0) / 1e9;
+                    TimeDrivenMD.run(n, r, dt, tf, tf + 1, k, 0, true, true, false, tmp);
+                    totalBrute += (System.nanoTime() - t0) / 1e9;
+
+                    t0 = System.nanoTime();
+                    TimeDrivenMD.run(n, r, dt, tf, tf + 1, k, 0, true, true, true, tmp);
+                    totalCim += (System.nanoTime() - t0) / 1e9;
                 }
-                double avg = total / runs;
-                System.out.printf("%d %.4f%n", n, avg);
-                w.printf("%d %.6f%n", n, avg);
-                w.flush();
+
+                double avgBrute = totalBrute / runs;
+                double avgCim   = totalCim   / runs;
+                System.out.printf("%4d  brute=%.4f s  cim=%.4f s  speedup=%.2fx%n",
+                        n, avgBrute, avgCim, avgBrute / avgCim);
+                wNoCim.printf("%d %.6f%n", n, avgBrute);
+                wCim  .printf("%d %.6f%n", n, avgCim);
+                wNoCim.flush();
+                wCim  .flush();
             }
         }
 
         // cleanup temp dir
-        Path tmp = outDir.resolve("_tmp");
-        if (Files.isDirectory(tmp)) {
+        if (Files.isDirectory(tmp))
             Files.walk(tmp).sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
-        }
 
-        System.out.printf("Results → %s%n", outDir.resolve("results.txt"));
+        System.out.printf("Results → %s%n", outDir);
     }
 
     static String resolveBin() {
