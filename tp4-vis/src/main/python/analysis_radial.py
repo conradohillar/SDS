@@ -21,8 +21,8 @@ import matplotlib.cm as cm
 import matplotlib.ticker
 
 
-N_VALUES        = [100, 200, 300, 400]
-N_VALUES_TARGET = list(range(50, 501, 50))
+N_VALUES        = [100, 200, 400, 600, 800]
+N_VALUES_TARGET = list(range(100, 801, 100))
 
 DS        = 0.2
 R_OBS_EFF = 2.0
@@ -187,29 +187,53 @@ def main():
     if not rho_profiles:
         print("No profiles computed."); return
 
-    colors = cm.plasma(np.linspace(0.1, 0.9, len(n_vals)))
+    colors = cm.plasma(np.linspace(0.1, 0.9, max(len(n_vals), 1)))
 
     curve_defs = [
         ("tp4_rho_vs_S", r"$\langle\rho_f^{in}\rangle(S)$", rho_profiles),
         ("tp4_v_vs_S",   r"$|\langle v_f^{in}\rangle(S)|$",  vel_profiles),
         ("tp4_Jin_vs_S", r"$J_{in}(S)$",                     jin_profiles),
     ]
+    sm = cm.ScalarMappable(cmap="plasma",
+                           norm=plt.Normalize(vmin=min(n_vals), vmax=max(n_vals)))
+    sm.set_array([])
     for fname, ylabel, profiles in curve_defs:
         fig, ax = plt.subplots(figsize=(8, 5))
         for i, n in enumerate(n_vals):
             if n not in profiles:
                 continue
-            ax.plot(s_centres, profiles[n], lw=2, color=colors[i], label=f"N={n}")
+            ax.plot(s_centres, profiles[n], lw=2, color=colors[i])
         ax.set_xlabel("S [m]", fontsize=13)
         ax.set_ylabel(ylabel, fontsize=13)
         ax.set_title(f"TP4 – {ylabel}", fontsize=13)
-        ax.legend(fontsize=11)
+        fig.colorbar(sm, ax=ax, label="N")
         ax.grid(True, ls="--", alpha=0.4)
         plt.tight_layout()
         out_path = os.path.join(img_dir, f"{fname}.png")
         plt.savefig(out_path, dpi=150)
         plt.close(fig)
         print(f"Saved → {out_path}")
+
+    # Zoom detail of Jin(S) in S=[1.5, 5] m as required by rubric 1.3
+    if jin_profiles:
+        s_zoom_mask = (s_centres >= 1.5) & (s_centres <= 5.0)
+        fig_z, ax_z = plt.subplots(figsize=(7, 5))
+        for i, n in enumerate(n_vals):
+            if n not in jin_profiles:
+                continue
+            ax_z.plot(s_centres[s_zoom_mask], jin_profiles[n][s_zoom_mask],
+                      lw=2, color=colors[i])
+        ax_z.set_xlabel("S [m]", fontsize=13)
+        ax_z.set_ylabel(r"$J_{in}(S)$", fontsize=13)
+        ax_z.set_title(r"TP4 – $J_{in}(S)$ detalle $S \in [1.5, 5]$ m", fontsize=13)
+        ax_z.set_xlim(1.5, 5.0)
+        fig_z.colorbar(sm, ax=ax_z, label="N")
+        ax_z.grid(True, ls="--", alpha=0.4)
+        plt.tight_layout()
+        out_z = os.path.join(img_dir, "tp4_Jin_vs_S_zoom.png")
+        plt.savefig(out_z, dpi=150)
+        plt.close(fig_z)
+        print(f"Saved → {out_z}")
 
     # vs-N plots at S~S_TARGET
     n_plot = [n for n in n_vals_target if n in jin_at_target]

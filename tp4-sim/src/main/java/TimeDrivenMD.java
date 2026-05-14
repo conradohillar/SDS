@@ -77,34 +77,53 @@ public class TimeDrivenMD {
         computeForces();
     }
 
-    void placeParticles() {
-        int placed = 0;
-        int attempts = 0;
-        while (placed < n) {
-            if (++attempts > 1_000_000) throw new RuntimeException("Cannot place all particles");
-            double angle = rng.nextDouble() * 2 * Math.PI;
-            double rMax  = R_WALL_EFF - 0.01;
-            double rMin  = SIGMA_OBS + 0.01;
-            double rSq   = rMin * rMin + rng.nextDouble() * (rMax * rMax - rMin * rMin);
-            double r     = Math.sqrt(rSq);
-            double xi    = r * Math.cos(angle);
-            double yi    = r * Math.sin(angle);
+    static class Point {
+        double x, y;
+        Point(double x, double y) { this.x = x; this.y = y; }
+    }
 
-            boolean ok = true;
-            for (int j = 0; j < placed; j++) {
-                double dx = xi - x[j], dy = yi - y[j];
-                if (dx * dx + dy * dy < SIGMA_PP * SIGMA_PP) { ok = false; break; }
+    void placeParticles() {
+        double step = SIGMA_PP + 0.001;
+        List<Point> validPositions = new ArrayList<>();
+
+        double rMax = R_WALL_EFF - 0.01;
+        double rMin = SIGMA_OBS + 0.01;
+
+        double dx = step;
+        double dy = step * Math.sqrt(3.0) / 2.0;
+
+        int iMax = (int) Math.ceil(rMax / dy);
+        int jMax = (int) Math.ceil(rMax / dx);
+
+        for (int i = -iMax; i <= iMax; i++) {
+            double yi = i * dy;
+            double xOffset = (Math.abs(i) % 2 == 1) ? (dx / 2.0) : 0.0;
+
+            for (int j = -jMax - 1; j <= jMax; j++) {
+                double xi = j * dx + xOffset;
+                double r = Math.sqrt(xi * xi + yi * yi);
+                if (r >= rMin && r <= rMax) {
+                    validPositions.add(new Point(xi, yi));
+                }
             }
-            if (ok) {
-                x[placed] = xi; y[placed] = yi;
-                // random velocity direction, speed ~ sqrt(k/m)*sigma/10 ≈ small
-                double speed = 0.1 * Math.sqrt(k / MASS) * R_PARTICLE;
-                double vAngle = rng.nextDouble() * 2 * Math.PI;
-                vx[placed] = speed * Math.cos(vAngle);
-                vy[placed] = speed * Math.sin(vAngle);
-                state[placed] = FRESH;
-                placed++;
-            }
+        }
+
+        if (validPositions.size() < n) {
+            throw new RuntimeException(String.format("Cannot place %d particles. Grid capacity is %d", n, validPositions.size()));
+        }
+
+        Collections.shuffle(validPositions, rng);
+
+        for (int i = 0; i < n; i++) {
+            Point p = validPositions.get(i);
+            x[i] = p.x;
+            y[i] = p.y;
+
+            double speed = 1.0;  // v0 = 1 m/s as per rubric
+            double vAngle = rng.nextDouble() * 2 * Math.PI;
+            vx[i] = speed * Math.cos(vAngle);
+            vy[i] = speed * Math.sin(vAngle);
+            state[i] = FRESH;
         }
     }
 
