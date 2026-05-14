@@ -109,10 +109,11 @@ if __name__ == "__main__":
 
             found_any = True
 
-            ax.plot(t, et, lw=1.4, color=color, label=label, alpha=0.9)
-
-            # Print drift info
             e0 = et[0] if et[0] != 0 else 1.0
+            rel_dev = np.abs(et - e0) / abs(e0)
+            rel_dev = np.where(rel_dev == 0, 1e-12, rel_dev)  # avoid log(0) at t=0
+            ax.semilogy(t, rel_dev, lw=1.4, color=color, label=label, alpha=0.9)
+
             drift = (et.max() - et.min()) / abs(e0) * 100
             print(f"  N={N}  dt={dt:.0e}  E_drift={drift:.4f}%  "
                   f"(Etot range: [{et.min():.4e}, {et.max():.4e}])")
@@ -122,7 +123,7 @@ if __name__ == "__main__":
             plt.close(fig)
             continue
 
-        ax.set_ylabel("Energía Total [J]", fontsize=13)
+        ax.set_ylabel(r"$|\Delta E| \/ / \/ |E_0|$", fontsize=13)
         ax.set_xlabel("Tiempo [s]", fontsize=13)
         ax.set_title(f"Validación del dt – N = {N}", fontsize=15, fontweight="bold")
         ax.legend(fontsize=11, loc="best")
