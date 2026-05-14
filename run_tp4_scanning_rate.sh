@@ -12,7 +12,7 @@ VIS_DIR="$REPO_ROOT/tp4-vis/src/main/python"
 N_VALUES="${N_VALUES:-100 200 300 400 500 600 700 800 900 1000}"
 REALIZATIONS="${REALIZATIONS:-10}"
 TF="${TF:-5000.0}"
-DT="${DT:-0.0001}"
+DT="${DT:-0.01}"
 DT2="${DT2:-50.0}"
 K="${K:-1000.0}"
 
@@ -26,7 +26,7 @@ for n in $N_VALUES; do
         (cd "$SIM_DIR" && mvn -q exec:java \
             -Dexec.mainClass=TimeDrivenMD \
             "-Dexec.args=--n $n --seed $r --dt $DT --tf $TF --dt2 $DT2 \
-                         --k $K --bin $BIN_DIR --run-id $RUN_ID")
+                         --k $K --cim --bin $BIN_DIR --run-id $RUN_ID")
     done
 done
 
