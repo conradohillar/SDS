@@ -5,16 +5,16 @@
 set -euo pipefail
 
 # ── Configuration (edit here) ─────────────────────────────────────────────────
-N=400           # number of particles
+N=100           # number of particles
 SEED=$RANDOM    # random seed (randomized each run)
-TF=2200.0        # simulation end time [s]
+TF=2000.0        # simulation end time [s]
 MAX_FRAMES=10000 # animation frame cap  (0 = no frames)
-FRAME_EVERY=50  # write a frame every N events
-RENDER_MP4=true
+FRAME_EVERY=1  # write a frame every N events
+RENDER_MP4=false
 FPS=60
 ARROW_LEN=1.5
 MACRO_BLOCK_SIZE=1   # set to 2 to avoid ffmpeg rescaling warnings
-SKIP_TIME=2000        # skip frames with t < SKIP_TIME in the animation
+SKIP_TIME=0        # skip frames with t < SKIP_TIME in the animation
 
 # ── Paths (auto-resolved, do not normally need editing) ───────────────────────
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

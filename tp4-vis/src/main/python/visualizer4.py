@@ -102,9 +102,9 @@ def animate(run_dir, fps, arrow_len, skip_time=0.0):
                           fontsize=10, va="top")
 
     ax.legend(handles=[
-        mpatches.Patch(color=C_FRESH, label="Fresh"),
-        mpatches.Patch(color=C_USED,  label="Used"),
-        mpatches.Patch(color=C_OBS,   label="Obstacle"),
+        mpatches.Patch(color=C_FRESH, label="Fresca"),
+        mpatches.Patch(color=C_USED,  label="Usada"),
+        mpatches.Patch(color=C_OBS,   label="Obstáculo"),
     ], loc="upper right", facecolor="#2c2c2c", labelcolor="white", fontsize=9)
 
     def update(idx):
@@ -116,7 +116,7 @@ def animate(run_dir, fps, arrow_len, skip_time=0.0):
         quiv.set_offsets(np.c_[x, y])
         quiv.set_UVC(pvx * arrow_len, pvy * arrow_len)
         time_txt.set_text(f"t = {t:.3f} s")
-        counter_txt.set_text(f"Used: {n_used}/{N}  ({100*n_used/N:.1f}%)")
+        counter_txt.set_text(f"Usadas: {n_used}/{N}  ({100*n_used/N:.1f}%)")
         return circles + [quiv, time_txt, counter_txt]
 
     anim = FuncAnimation(fig, update, frames=len(frames), interval=1000 / fps, blit=False)
@@ -135,7 +135,7 @@ if __name__ == "__main__":
     ap.add_argument("--bin",       default=None,  help="Path to tp4-bin directory")
     ap.add_argument("--run-id",    default="default")
     ap.add_argument("--fps",       type=float, default=30)
-    ap.add_argument("--arrow-len", type=float, default=1.5)
+    ap.add_argument("--arrow-len", type=float, default=0.1)
     ap.add_argument("--skip-time", type=float, default=0.0)
     a = ap.parse_args()
 

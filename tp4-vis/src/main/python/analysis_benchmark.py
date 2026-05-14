@@ -58,19 +58,11 @@ if __name__ == "__main__":
     ns = np.array([d[0] for d in data])
     ts = np.array([d[1] for d in data])
 
-    # quadratic fit O(N^2) expected for pairwise forces
-    coeffs2 = np.polyfit(ns, ts, 2)
-    p2 = np.poly1d(coeffs2)
-    ns_fit = np.linspace(ns.min(), ns.max(), 300)
-
     fig, ax = plt.subplots(figsize=(9, 5))
-    ax.plot(ns, ts, "o", color="#3498db", ms=7, lw=2, label="Datos simulación")
-    ax.plot(ns_fit, p2(ns_fit), "--", color="#e74c3c", lw=2,
-            label=f"Ajuste $O(N^2)$: {coeffs2[0]:.3g}$N^2$+{coeffs2[1]:.3g}$N$+{coeffs2[2]:.3g}")
+    ax.plot(ns, ts, "o-", color="#3498db", ms=7, lw=2)
     ax.set_xlabel("N", fontsize=13)
     ax.set_ylabel("t [s]", fontsize=13)
     ax.set_title("TP4 – Tiempo de cómputo vs N  (Time-Driven MD)", fontsize=14)
-    ax.legend(fontsize=11)
     ax.grid(True, ls="--", alpha=0.5)
     plt.tight_layout()
     out = os.path.join(img_dir, "tp4_benchmark.png")

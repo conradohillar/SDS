@@ -8,7 +8,7 @@ SIM_DIR="$REPO_ROOT/tp4-sim"
 BIN_DIR="$REPO_ROOT/tp4-bin"
 VIS_DIR="$REPO_ROOT/tp4-vis/src/main/python"
 
-DT="${DT:-1e-4}"
+DT="${DT:-1e-2}"
 TF="${TF:-5.0}"
 
 echo "Building tp4-sim …"
@@ -26,5 +26,6 @@ echo "Running ECM study …"
 
 echo ""
 echo "Generating plots …"
+source "$REPO_ROOT/.venv/bin/activate" 2>/dev/null || true
 python3 "$VIS_DIR/analysis_oscillator.py" --bin-dir "$BIN_DIR"
 echo "Done. Images → $BIN_DIR/images/"

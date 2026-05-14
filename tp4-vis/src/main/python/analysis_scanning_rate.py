@@ -21,7 +21,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 
-N_VALUES_TARGET = list(range(50, 501, 50))
+N_VALUES_TARGET = list(range(100, 801, 100))
 TRANSIENT_FRAC  = 0.2   # skip first 20% of time as transient
 
 

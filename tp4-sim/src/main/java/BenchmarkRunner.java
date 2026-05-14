@@ -18,13 +18,13 @@ import java.util.*;
 public class BenchmarkRunner {
 
     static final int[] N_VALUES = {
-        50, 75, 100, 125, 150, 175, 200, 250, 300, 350, 400, 450, 500
+        100, 200, 300, 400, 500, 600, 700, 800
     };
 
     public static void main(String[] args) throws IOException {
         double tf   = 5.0;
         double dt   = 0.01;
-        int    runs = 5;
+        int    runs = 10;
         double k    = 1000.0;
         String bin  = resolveBin();
 

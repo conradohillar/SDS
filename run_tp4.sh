@@ -8,10 +8,10 @@ SIM_DIR="$REPO_ROOT/tp4-sim"
 BIN_DIR="${TP4_BIN_PATH:-$REPO_ROOT/tp4-bin}"
 VIS_DIR="$REPO_ROOT/tp4-vis/src/main/python"
 
-N="${N:-10}"
+N="${N:-1000}"
 SEED="${SEED:-42}"
-DT="${DT:-0.01}"
-TF="${TF:-1000.0}"
+DT="${DT:-0.001}"
+TF="${TF:-20.0}"
 DT2="${DT2:-0.3}"
 K="${K:-1000.0}"
 RUN_ID="${RUN_ID:-default}"
@@ -22,6 +22,8 @@ SKIP_TIME="${SKIP_TIME:-0.0}"
 
 echo "Building tp4-sim …"
 (cd "$SIM_DIR" && mvn -q package -DskipTests 2>/dev/null || true)
+
+rm -rf "$BIN_DIR/$RUN_ID"
 
 echo "Running TimeDrivenMD (N=$N, seed=$SEED, dt=$DT, tf=$TF, k=$K, run-id=$RUN_ID) …"
 (cd "$SIM_DIR" && mvn -q exec:java \

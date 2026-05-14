@@ -229,7 +229,7 @@ public class OscilladorAmortiguado {
     // ═══════════════════════════════════════════════════════════════════════════
 
     static void runECMStudy(double tf, Path outDir) throws IOException {
-        double[] dts = {1e-1, 5e-2, 1e-2, 5e-3, 1e-3, 5e-4, 1e-4, 5e-5, 1e-5};
+        double[] dts = {1e-1, 5e-2, 1e-2, 5e-3, 1e-3, 5e-4, 1e-4, 5e-5, 1e-5, 5e-6, 1e-6};
         Files.createDirectories(outDir);
         try (var w = open(outDir, "ecm_vs_dt.txt")) {
             w.println("dt ecm_euler ecm_verlet ecm_beeman ecm_gear");
