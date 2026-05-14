@@ -21,7 +21,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 
-N_VALUES_TARGET = list(range(100, 801, 100))
+N_VALUES_TARGET = list(range(100, 1001, 100))
 TRANSIENT_FRAC  = 0.2   # skip first 20% of time as transient
 
 
@@ -84,7 +84,7 @@ def main():
     bin_dir  = os.path.abspath(a.bin_dir) if a.bin_dir else _default_bin_dir()
     img_dir  = os.path.join(bin_dir, "images")
     os.makedirs(img_dir, exist_ok=True)
-    sr_root  = os.path.join(bin_dir, "scanning_rate")
+    sr_root  = os.path.join(bin_dir, "runs")
 
     if not os.path.isdir(sr_root):
         print(f"ERROR: {sr_root} not found. Run run_tp4_scanning_rate.sh first.")

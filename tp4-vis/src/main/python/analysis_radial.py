@@ -21,8 +21,8 @@ import matplotlib.cm as cm
 import matplotlib.ticker
 
 
-N_VALUES        = [100, 200, 400, 600, 800]
-N_VALUES_TARGET = list(range(100, 801, 100))
+N_VALUES        = list(range(100, 1001, 100))
+N_VALUES_TARGET = list(range(100, 1001, 100))
 
 DS        = 0.2
 R_OBS_EFF = 2.0
@@ -118,7 +118,7 @@ def main():
     n_vals        = a.n_values or N_VALUES
     n_vals_target = a.n_values or N_VALUES_TARGET
     n_vals_all    = sorted(set(n_vals) | set(n_vals_target))
-    rad_root  = os.path.join(bin_root, "radial")
+    rad_root  = os.path.join(bin_root, "runs")
 
     s_edges   = shell_edges()
     s_centres = s_edges + DS / 2
