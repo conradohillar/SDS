@@ -30,6 +30,52 @@ def _default_bin_dir():
     return os.path.normpath(os.path.join(s, "..", "..", "..", "..", "tp4-bin"))
 
 
+def _default_tp3_bin():
+    s = os.path.dirname(os.path.abspath(__file__))
+    return os.path.normpath(os.path.join(s, "..", "..", "..", "..", "tp3-bin"))
+
+
+def load_tp3_j(tp3_bin, transient_frac=TRANSIENT_FRAC):
+    """Return {N: (mean_J, std_J)} from TP3 scanning_rate/N*/r*/stats.txt."""
+    sr_root = Path(tp3_bin) / "scanning_rate"
+    if not sr_root.exists():
+        return {}
+    result = {}
+    for n_dir in sorted(
+        (d for d in sr_root.iterdir() if d.is_dir() and re.match(r"N\d+$", d.name)),
+        key=lambda d: int(d.name[1:])
+    ):
+        n = int(n_dir.name[1:])
+        js = []
+        for r_dir in sorted(
+            d for d in n_dir.iterdir() if d.is_dir() and re.match(r"r\d+$", d.name)
+        ):
+            stats = r_dir / "stats.txt"
+            if not stats.exists():
+                continue
+            t_vals, c_vals = [], []
+            with open(stats) as f:
+                for line in f:
+                    p = line.strip().split()
+                    if len(p) >= 2:
+                        try:
+                            t_vals.append(float(p[0])); c_vals.append(float(p[1]))
+                        except ValueError:
+                            pass
+            if len(t_vals) < 2:
+                continue
+            t_arr = np.array(t_vals); c_arr = np.array(c_vals)
+            t_start = transient_frac * t_arr[-1]
+            mask = t_arr >= t_start
+            if mask.sum() < 2:
+                continue
+            js.append(np.polyfit(t_arr[mask], c_arr[mask], 1)[0])
+        if js:
+            result[n] = (float(np.mean(js)),
+                         float(np.std(js, ddof=1)) if len(js) > 1 else 0.0)
+    return result
+
+
 def load_cfc_times(cfc_path):
     times = []
     with open(cfc_path) as f:
@@ -79,9 +125,11 @@ def compute_j(times, tf, transient_frac=TRANSIENT_FRAC):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--bin-dir", default=None)
+    ap.add_argument("--tp3-bin", default=None)
     a = ap.parse_args()
 
     bin_dir  = os.path.abspath(a.bin_dir) if a.bin_dir else _default_bin_dir()
+    tp3_bin  = os.path.abspath(a.tp3_bin) if a.tp3_bin else _default_tp3_bin()
     img_dir  = os.path.join(bin_dir, "images")
     os.makedirs(img_dir, exist_ok=True)
     sr_root  = os.path.join(bin_dir, "runs")
@@ -135,12 +183,24 @@ def main():
     jm   = np.array([j_mean[n] for n in ns])
     jerr = np.array([j_std[n]  for n in ns])
 
-    fig, ax = plt.subplots(figsize=(8, 5))
+    # Load TP3 curve
+    tp3_j = load_tp3_j(tp3_bin)
+
+    fig, ax = plt.subplots(figsize=(9, 5))
     ax.errorbar(ns, jm, yerr=jerr, fmt="o-", lw=2, color="#e74c3c",
-                capsize=5, elinewidth=1.5, label="$\\langle J \\rangle$")
+                capsize=5, elinewidth=1.5, label="TP4 – Time-Driven")
+
+    if tp3_j:
+        ns3  = np.array(sorted(tp3_j.keys()))
+        jm3  = np.array([tp3_j[n][0] for n in ns3])
+        je3  = np.array([tp3_j[n][1] for n in ns3])
+        ax.errorbar(ns3, jm3, yerr=je3, fmt="s--", lw=2, color="#2980b9",
+                    capsize=5, elinewidth=1.5, label="TP3 – Event-Driven")
+        print(f"TP3 curve: N={ns3[0]}..{ns3[-1]}, {len(ns3)} puntos")
+
     ax.set_xlabel("N", fontsize=13)
-    ax.set_ylabel("J [colisiones/s]", fontsize=13)
-    ax.set_title("TP4 – Tasa de escaneo $J$ vs $N$  (Time-Driven MD)", fontsize=14)
+    ax.set_ylabel("J", fontsize=13)
+    ax.set_title("Tasa de escaneo $J$ vs $N$", fontsize=14)
     ax.legend(fontsize=11)
     ax.grid(True, ls="--", alpha=0.4)
     plt.tight_layout()

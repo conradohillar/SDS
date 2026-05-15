@@ -46,6 +46,52 @@ def _default_bin_dir():
     return os.path.normpath(os.path.join(s, "..", "..", "..", "..", "tp4-bin"))
 
 
+def _default_tp3_bin():
+    s = os.path.dirname(os.path.abspath(__file__))
+    return os.path.normpath(os.path.join(s, "..", "..", "..", "..", "tp3-bin"))
+
+
+def load_tp3_j(tp3_bin, transient_frac=TRANSIENT_FRAC):
+    """Return {N: (mean_J, std_J)} from TP3 scanning_rate/N*/r*/stats.txt."""
+    sr_root = Path(tp3_bin) / "scanning_rate"
+    if not sr_root.exists():
+        return {}
+    result = {}
+    for n_dir in sorted(
+        (d for d in sr_root.iterdir() if d.is_dir() and re.match(r"N\d+$", d.name)),
+        key=lambda d: int(d.name[1:])
+    ):
+        n = int(n_dir.name[1:])
+        js = []
+        for r_dir in sorted(
+            d for d in n_dir.iterdir() if d.is_dir() and re.match(r"r\d+$", d.name)
+        ):
+            stats = r_dir / "stats.txt"
+            if not stats.exists():
+                continue
+            t_vals, c_vals = [], []
+            with open(stats) as f:
+                for line in f:
+                    p = line.strip().split()
+                    if len(p) >= 2:
+                        try:
+                            t_vals.append(float(p[0])); c_vals.append(float(p[1]))
+                        except ValueError:
+                            pass
+            if len(t_vals) < 2:
+                continue
+            t_arr = np.array(t_vals); c_arr = np.array(c_vals)
+            t_start = transient_frac * t_arr[-1]
+            mask = t_arr >= t_start
+            if mask.sum() < 2:
+                continue
+            js.append(np.polyfit(t_arr[mask], c_arr[mask], 1)[0])
+        if js:
+            result[n] = (float(np.mean(js)),
+                         float(np.std(js, ddof=1)) if len(js) > 1 else 0.0)
+    return result
+
+
 def parse_metadata(path):
     meta = {}
     with open(path) as f:
@@ -137,9 +183,11 @@ def compute_jin_at_target(frames_dir, n, s_target=S_TARGET, ds=DS):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--bin-dir", default=None)
+    ap.add_argument("--tp3-bin", default=None)
     a = ap.parse_args()
 
     bin_dir = os.path.abspath(a.bin_dir) if a.bin_dir else _default_bin_dir()
+    tp3_bin = os.path.abspath(a.tp3_bin) if a.tp3_bin else _default_tp3_bin()
     img_dir = os.path.join(bin_dir, "images")
     os.makedirs(img_dir, exist_ok=True)
     kv_root = os.path.join(bin_dir, "k_variation")
@@ -226,6 +274,8 @@ def main():
     colors_map = cm.viridis(np.linspace(0.15, 0.85, len(k_vals)))
     k_colors = {k: colors_map[i] for i, k in enumerate(k_vals)}
 
+    tp3_j = load_tp3_j(tp3_bin)
+
     def mean_std(vals):
         m = float(np.mean(vals))
         s = float(np.std(vals, ddof=1)) if len(vals) > 1 else 0.0
@@ -252,10 +302,16 @@ def main():
         n_star_j[k_val] = int(ns[idx_max])
         max_j[k_val]    = float(jm[idx_max])
 
+    if tp3_j:
+        ns3 = np.array(sorted(tp3_j.keys()))
+        jm3 = np.array([tp3_j[n][0] for n in ns3])
+        je3 = np.array([tp3_j[n][1] for n in ns3])
+        ax1.errorbar(ns3, jm3, yerr=je3, fmt="s--", lw=2, color="black",
+                     capsize=4, elinewidth=1.2, label="TP3 – Event-Driven")
+
     ax1.set_xlabel("N", fontsize=13)
-    ax1.set_ylabel("$\\langle J \\rangle$ [colisiones/s]", fontsize=13)
-    ax1.set_title("TP4 1.4 – Tasa de escaneo $\\langle J \\rangle (N)$ para distintos $k$",
-                  fontsize=14)
+    ax1.set_ylabel("J", fontsize=13)
+    ax1.set_title("Tasa de escaneo $J(N)$ para distintos $k$", fontsize=14)
     ax1.legend(fontsize=10)
     ax1.grid(True, ls="--", alpha=0.4)
     plt.tight_layout()
