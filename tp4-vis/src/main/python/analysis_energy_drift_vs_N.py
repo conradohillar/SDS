@@ -67,8 +67,9 @@ if __name__ == "__main__":
         raise SystemExit(1)
 
     n_dirs = sorted(
-        d for d in Path(runs_root).iterdir()
-        if d.is_dir() and re.match(r"N\d+$", d.name)
+        (d for d in Path(runs_root).iterdir()
+         if d.is_dir() and re.match(r"N\d+$", d.name)),
+        key=lambda d: int(d.name[1:])
     )
 
     ns_out, means, stds = [], [], []
