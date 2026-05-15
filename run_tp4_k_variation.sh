@@ -32,10 +32,10 @@ for k in $K_VALUES; do
 
     for r in $(seq 0 $((REALIZATIONS - 1))); do
         (
-            # Seed base unique to this subshell: BASHPID * prime + r
-            SEED_BASE=$(( BASHPID * 10007 + r * 9973 ))
+            # $$ = parent PID (same across jobs), r and RANDOM add per-job entropy
+            SEED_BASE=$(( $$ * 10007 + r * 9973 + RANDOM * 97 ))
             for n in $N_VALUES; do
-                SEED=$(( (SEED_BASE + n * 97) % 2147483647 ))
+                SEED=$(( (SEED_BASE + n * 1009) % 2147483647 ))
                 RUN_ID="k_variation/k${k}/N${n}/r${r}"
                 echo "  [r=$r] k=$k  N=$n  seed=$SEED  →  $RUN_ID"
                 (cd "$SIM_DIR" && mvn -q exec:java \
