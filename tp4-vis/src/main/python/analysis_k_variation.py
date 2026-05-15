@@ -173,8 +173,9 @@ def main():
         jin_data[k_val] = {}
 
         n_dirs = sorted(
-            d for d in k_dir.iterdir()
-            if d.is_dir() and re.match(r"N\d+$", d.name)
+            (d for d in k_dir.iterdir()
+             if d.is_dir() and re.match(r"N\d+$", d.name)),
+            key=lambda d: int(d.name[1:])
         )
 
         for n_dir in n_dirs:
