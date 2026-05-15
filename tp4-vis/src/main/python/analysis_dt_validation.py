@@ -10,7 +10,7 @@ Lee archivos:
 
 Usage:
     python3 analysis_dt_validation.py [--bin-dir PATH] \
-        --n-values 100,200,400 --dt-values 0.1,0.01,0.001,0.0001
+        --n-values 100,200,400 --dt-values 0.1,0.01,0.001,0.0001 [--k-label k1e5]
 """
 import argparse
 import os
@@ -65,6 +65,8 @@ if __name__ == "__main__":
                     help="Comma-separated list of N values, e.g. 100,200,400")
     ap.add_argument("--dt-values", required=True,
                     help="Comma-separated list of dt values, e.g. 0.1,0.01,0.001")
+    ap.add_argument("--k-label", default=None,
+                    help="Optional k identifier inserted into run-id, e.g. k1e5")
     a = ap.parse_args()
 
     bin_dir = os.path.abspath(a.bin_dir) if a.bin_dir else _default_bin_dir()
@@ -79,13 +81,18 @@ if __name__ == "__main__":
     dt_colors = {dt: _COLOR_POOL[i % len(_COLOR_POOL)]
                  for i, dt in enumerate(dt_values)}
 
+    k_label = a.k_label  # e.g. "k1e5" or None
+
     for N in n_values:
         fig, ax = plt.subplots(figsize=(12, 6))
 
         found_any = False
 
         for dt, dt_str in zip(dt_values, dt_strings):
-            run_id = f"dt_val_N{N}_dt{dt_str}"
+            if k_label:
+                run_id = f"dt_val_N{N}_{k_label}_dt{dt_str}"
+            else:
+                run_id = f"dt_val_N{N}_dt{dt_str}"
             energy_file = os.path.join(bin_dir, run_id, "energy.txt")
 
             if not os.path.exists(energy_file):
@@ -125,12 +132,14 @@ if __name__ == "__main__":
 
         ax.set_ylabel(r"$|\Delta E| \/ / \/ |E_0|$", fontsize=13)
         ax.set_xlabel("Tiempo [s]", fontsize=13)
-        ax.set_title(f"Validación del dt – N = {N}", fontsize=15, fontweight="bold")
+        k_title = f", k = {k_label}" if k_label else ""
+        ax.set_title(f"Validación del dt – N = {N}{k_title}", fontsize=15, fontweight="bold")
         ax.legend(fontsize=11, loc="best")
         ax.grid(True, ls="--", alpha=0.4)
 
         plt.tight_layout()
-        out = os.path.join(img_dir, f"tp4_dt_validation_N{N}.png")
+        k_suffix = f"_{k_label}" if k_label else ""
+        out = os.path.join(img_dir, f"tp4_dt_validation_N{N}{k_suffix}.png")
         plt.savefig(out, dpi=150)
         plt.close(fig)
         print(f"  Saved → {out}")
