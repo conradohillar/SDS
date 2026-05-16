@@ -25,3 +25,16 @@ Informe:
 -Se habla mucho de "alineacion global" y "desorden", ¿en que valores de v_a se cambia de una interpretacion a otra?. En un ejemplo donde solo se pueden mover a la derecha o a la izquierda, si un sistema tiene 3 particulas que se mueven a la izquierda y una a la derecha, la polarizacion nos da 0.5, ¿dirian que el sistema esta desordenado?.
 
 TP3:
+Comentarios generales:
+ 
+-En el enunciado del TP se pedia que para realizar las animaciones se consideren solos los estados donde se sucede un evento y las animaciones presentadas no cumplen con esto, tienen una fluidez continua.
+-Al igual que en el TP anterior no hay un cuidado en el tamaño de las fuentes en algunas diapositivas
+ 
+D4) El modulo de la velocidad no se mantiene constante, es solo un seteo inicial.
+D10) Se vuelve de decir que el modulo de la velocidad es fijo.
+D15/16/17) Se muestran animaciones ya avanzadas en el tiempo, seria ideal que no sea asi, al menos en estos sistemas, asi se puede ver como se va propagando el estado "usado" a medida que chocan con el centro. Las leyendas de las animaciones son muy chicas y no llegan a leerse.
+D19/20)¿Por que J(eventos/s)? Ahi deberia decir "Ajuste J" o simplemente "J".
+D22) El subindice "u" del titulo quedó mal.
+D27) La fuente queda muy pequeña con esta configuracion. Aprovechando que el eje X es el mismo en todas y que el margen de valores del eje Y era comparable quizas se podria haber presentado los tres graficos en uno solo y que se pueda ver bien.
+D29)Las conclusiones no deben tener titulo ni estar tan redactadas. Deben ser un punteo de los resultados mas importantes presentados.
+ 
