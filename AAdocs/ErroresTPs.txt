@@ -1,0 +1,27 @@
+TP2:
+General:
+ 
+-La explicacion del modelo tiene algunos errores como hablar del "angulo de los vecinos" sin aclarar que es el angulo del vector velocidad del vecino o decir que eta estara entre [-2pi,2pi] junto con el ruido en [-eta/2,eta/2]
+-En la implementacion solo debe mencionarse lo necesario para la reproduccion del sistema modelado. El postprocesamiento, modulos de vizualizacion o parametros particulares no deben estar en esta seccion, por ejemplo, el tamaño de paso discreto en el tiempo.
+-Hay varias afirmaciones hechas que no se sustentan en los analisis hechos, como ""a mayor densidad, mayor polarización global" o ""las fluctuaciones temporales de v_a son considerablemente mayores"
+-Los graficos podrian ser mas claros excluyendo la informacion redundante o innecesaria.
+ 
+ 
+Presentacion:
+-En la presentacion no hay necesidad de numerar las ecuaciones.
+-Todos los parametros que van a quedar fijos (N,L,v_0, etc) se mencionan y muestran una vez y luego ya no mas hasta que alguno de ellos cambie.
+-Los parametros deben llevar unidad.
+-Mostrar los parametros fijos en cada grafico ocupó lugar que podria haber sido usado para que los graficos sean mas grandes y claros.
+-El tamaño de todas las etiquetas es infimo, no se alcanza a leer.
+-Aplican las mismas correcciones a los graficos que en el informe.
+-Las conclusiones sobre el efecto de la densidad no estan basadas en un correcto estudio.
+ 
+ 
+Informe:
+ 
+-No hay necesidad que agregar el "limite estacionario =250" en la leyenda del grafico.
+-Las etiquetas de los graficos hay que intentar que sean concisas, si ya se definio v_a, no hay necesidad de que la etiqueta sea "polarizacion (v_a)", similar con "tiempo (steps)" que podria ser solo "paso".
+-Se sacan muchas conclusiones mirando unicamente los graficos sin dar los valores numericos de los observables y su desvio.
+-Se habla mucho de "alineacion global" y "desorden", ¿en que valores de v_a se cambia de una interpretacion a otra?. En un ejemplo donde solo se pueden mover a la derecha o a la izquierda, si un sistema tiene 3 particulas que se mueven a la izquierda y una a la derecha, la polarizacion nos da 0.5, ¿dirian que el sistema esta desordenado?.
+
+TP3:
