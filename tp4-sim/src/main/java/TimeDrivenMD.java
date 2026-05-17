@@ -343,7 +343,12 @@ public class TimeDrivenMD {
 
         Files.createDirectories(outDir);
         Path framesDir = outDir.resolve("frames");
-        if (!noFrames) Files.createDirectories(framesDir);
+        if (!noFrames) {
+            Files.createDirectories(framesDir);
+            try (var ds = Files.newDirectoryStream(framesDir, "frame_*.txt")) {
+                for (Path old : ds) Files.delete(old);
+            }
+        }
 
         TimeDrivenMD sim = new TimeDrivenMD(n, k, seed, useCim);
 

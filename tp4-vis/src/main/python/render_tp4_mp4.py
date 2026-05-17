@@ -85,14 +85,15 @@ def render(run_dir, output, fps, arrow_len, macro_block_size, skip_time=0.0):
                      color=C_ARROW, alpha=0.6, scale=1 / arrow_len, scale_units="xy",
                      angles="xy", width=0.004, zorder=4)
 
-    time_txt    = ax.text(0.02, 0.97, "", transform=ax.transAxes, color="white",
-                          fontsize=11, va="top", family="monospace")
-    counter_txt = ax.text(0.02, 0.92, "", transform=ax.transAxes, color="white",
-                          fontsize=10, va="top")
+    time_txt    = ax.text(0.02, 0.93, "", transform=ax.transAxes, color="white",
+                          fontsize=18, va="top", family="monospace")
+    counter_txt = ax.text(0.02, 0.98, "", transform=ax.transAxes, color="white",
+                          fontsize=18, va="top")
     ax.legend(handles=[
         mpatches.Patch(color=C_FRESH, label="Frescas"),
         mpatches.Patch(color=C_USED,  label="Usadas"),
-    ], loc="upper right", facecolor="#2c2c2c", labelcolor="white", fontsize=9)
+    ], loc="upper right", facecolor="#2c2c2c", labelcolor="white", fontsize=17,
+       handlelength=1, handleheight=1)
 
     def update(idx):
         t, x, y, pvx, pvy, st = frames[idx]
@@ -102,7 +103,7 @@ def render(run_dir, output, fps, arrow_len, macro_block_size, skip_time=0.0):
             c.set_color(C_FRESH if st[i] == 0 else C_USED)
         quiv.set_offsets(np.c_[x, y])
         quiv.set_UVC(pvx * arrow_len, pvy * arrow_len)
-        time_txt.set_text(f"t = {t:.3f} s")
+        time_txt.set_text(f"t = {t:.1f} s")
         counter_txt.set_text(f"Usadas: {n_used}/{N}")
         return circles + [quiv, time_txt, counter_txt]
 

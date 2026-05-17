@@ -96,16 +96,17 @@ def animate(run_dir, fps, arrow_len, skip_time=0.0):
         angles="xy", width=0.004, zorder=4
     )
 
-    time_txt    = ax.text(0.02, 0.97, "", transform=ax.transAxes, color="white",
-                          fontsize=11, va="top", family="monospace")
-    counter_txt = ax.text(0.02, 0.92, "", transform=ax.transAxes, color="white",
-                          fontsize=10, va="top")
+    time_txt    = ax.text(0.02, 0.94, "", transform=ax.transAxes, color="white",
+                          fontsize=15, va="top", family="monospace", fontweight="bold")
+    counter_txt = ax.text(0.02, 0.995, "", transform=ax.transAxes, color="white",
+                          fontsize=15, va="top", fontweight="bold")
 
     ax.legend(handles=[
         mpatches.Patch(color=C_FRESH, label="Fresca"),
         mpatches.Patch(color=C_USED,  label="Usada"),
         mpatches.Patch(color=C_OBS,   label="Obstáculo"),
-    ], loc="upper right", facecolor="#2c2c2c", labelcolor="white", fontsize=9)
+    ], loc="upper right", facecolor="#2c2c2c", labelcolor="white", fontsize=16,
+       handlelength=2, handleheight=1.5)
 
     def update(idx):
         t, x, y, pvx, pvy, st = frames[idx]
@@ -115,7 +116,7 @@ def animate(run_dir, fps, arrow_len, skip_time=0.0):
             c.set_color(C_FRESH if st[i] == 0 else C_USED)
         quiv.set_offsets(np.c_[x, y])
         quiv.set_UVC(pvx * arrow_len, pvy * arrow_len)
-        time_txt.set_text(f"t = {t:.3f} s")
+        time_txt.set_text(f"t = {t:.1f} s")
         counter_txt.set_text(f"Usadas: {n_used}/{N}  ({100*n_used/N:.1f}%)")
         return circles + [quiv, time_txt, counter_txt]
 
@@ -135,7 +136,7 @@ if __name__ == "__main__":
     ap.add_argument("--bin",       default=None,  help="Path to tp4-bin directory")
     ap.add_argument("--run-id",    default="default")
     ap.add_argument("--fps",       type=float, default=30)
-    ap.add_argument("--arrow-len", type=float, default=0.1)
+    ap.add_argument("--arrow-len", type=float, default=1.5)
     ap.add_argument("--skip-time", type=float, default=0.0)
     a = ap.parse_args()
 
