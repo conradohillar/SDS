@@ -60,7 +60,7 @@ if __name__ == "__main__":
     if os.path.exists(tp4_file):
         ns4, ts4 = load(tp4_file)
         ax.plot(ns4, ts4, "o-", lw=2, color="#2980b9", ms=5,
-                label="TP4 – Time-Driven MD (CIM, tf=5 s, dt=10⁻³ s)")
+                label="TP4 – Time-Driven")
         print(f"TP4 CIM: N={ns4[0]}..{ns4[-1]}, {len(ns4)} puntos")
     else:
         print(f"SKIP TP4: {tp4_file} not found")
@@ -68,13 +68,13 @@ if __name__ == "__main__":
     if os.path.exists(tp3_file):
         ns3, ts3 = load(tp3_file)
         ax.plot(ns3, ts3, "s--", lw=2, color="#e74c3c", ms=5,
-                label="TP3 – Event-Driven MD (tf=5 s)")
+                label="TP3 – Event-Driven")
         print(f"TP3:     N={ns3[0]}..{ns3[-1]}, {len(ns3)} puntos")
     else:
         print(f"SKIP TP3: {tp3_file} not found")
 
     ax.set_xlabel("N", fontsize=13)
-    ax.set_ylabel("Tiempo de cómputo [s]", fontsize=13)
+    ax.set_ylabel("Tiempo [s]", fontsize=13)
     ax.set_title("Tiempo de cómputo vs N: TP3 (event-driven) vs TP4 CIM (time-driven)",
                  fontsize=13)
     ax.legend(fontsize=11)

@@ -160,8 +160,8 @@ def load_frames_raw(frames_dir, n):
 
 def compute_jin_at_target(frames_dir, n, s_target=S_TARGET, ds=DS):
     """Average inward fresh-particle flux at shell S≈s_target."""
-    s_lo = s_target - ds / 2
-    s_hi = s_target + ds / 2
+    s_lo = s_target
+    s_hi = s_target + ds
     area = np.pi * (s_hi**2 - s_lo**2)
 
     jin_vals = []
@@ -184,13 +184,15 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--bin-dir", default=None)
     ap.add_argument("--tp3-bin", default=None)
+    ap.add_argument("--k-subdir", default="k_variation",
+                    help="Subdirectory under bin-dir that contains k* dirs (default: k_variation)")
     a = ap.parse_args()
 
     bin_dir = os.path.abspath(a.bin_dir) if a.bin_dir else _default_bin_dir()
     tp3_bin = os.path.abspath(a.tp3_bin) if a.tp3_bin else _default_tp3_bin()
     img_dir = os.path.join(bin_dir, "images")
     os.makedirs(img_dir, exist_ok=True)
-    kv_root = os.path.join(bin_dir, "k_variation")
+    kv_root = os.path.join(bin_dir, a.k_subdir)
 
     if not os.path.isdir(kv_root):
         print(f"ERROR: {kv_root} not found. Run run_tp4_k_variation.sh first.")
@@ -292,8 +294,7 @@ def main():
         jm = np.array([mean_std(j_data[k_val][n])[0] for n in ns])
         je = np.array([mean_std(j_data[k_val][n])[1] for n in ns])
 
-        dt_label = f"(dt={dt_used.get(k_val, '?')})"
-        label = f"k={k_val:.0f} {dt_label}"
+        label = f"k={k_val:.0f}"
         ax1.errorbar(ns, jm, yerr=je, fmt="o-", lw=2, color=k_colors[k_val],
                      capsize=4, elinewidth=1.2, label=label)
 
@@ -331,8 +332,7 @@ def main():
         jm = np.array([mean_std(jin_data[k_val][n])[0] for n in ns])
         je = np.array([mean_std(jin_data[k_val][n])[1] for n in ns])
 
-        dt_label = f"(dt={dt_used.get(k_val, '?')})"
-        label = f"k={k_val:.0f} {dt_label}"
+        label = f"k={k_val:.0f}"
         ax2.errorbar(ns, jm, yerr=je, fmt="s-", lw=2, color=k_colors[k_val],
                      capsize=4, elinewidth=1.2, label=label)
 

@@ -199,8 +199,8 @@ def main():
         print(f"TP3 curve: N={ns3[0]}..{ns3[-1]}, {len(ns3)} puntos")
 
     ax.set_xlabel("N", fontsize=13)
-    ax.set_ylabel("J", fontsize=13)
-    ax.set_title("Tasa de escaneo $J$ vs $N$", fontsize=14)
+    ax.set_ylabel(r"$\langle J \rangle$", fontsize=13)
+    ax.set_title(r"Tasa de escaneo $\langle J \rangle$ vs $N$", fontsize=14)
     ax.legend(fontsize=11)
     ax.grid(True, ls="--", alpha=0.4)
     plt.tight_layout()

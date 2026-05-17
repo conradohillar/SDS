@@ -36,7 +36,7 @@ def load_cfc_times(path):
 
 
 def mean_cfc_trajectory(r_dirs):
-    """Return (t_grid, mean_Cfc) averaged over realizations."""
+    """Return (t_grid, mean_Cfc, std_Cfc) averaged over realizations."""
     series = []
     for r_dir in r_dirs:
         cfc_path = r_dir / "cfc.txt"
@@ -47,13 +47,14 @@ def mean_cfc_trajectory(r_dirs):
             series.append(times)
 
     if not series:
-        return None, None
+        return None, None, None
 
     tf = max(t[-1] for t in series)
     t_grid = np.linspace(0, tf, T_GRID)
     mat = np.array([[np.sum(times <= t) for t in t_grid] for times in series],
                    dtype=float)
-    return t_grid, mat.mean(axis=0)
+    std = mat.std(axis=0, ddof=1) if len(series) > 1 else np.zeros(T_GRID)
+    return t_grid, mat.mean(axis=0), std
 
 
 if __name__ == "__main__":
@@ -68,6 +69,8 @@ if __name__ == "__main__":
 
     fig, ax = plt.subplots(figsize=(10, 6))
 
+    print(f"\n{'N':>6}  {'pendiente [1/s]':>18}  {'R²':>6}")
+    print("-" * 36)
     for n, color in zip(N_PLOT, COLORS):
         n_dir = runs_root / f"N{n}"
         if not n_dir.exists():
@@ -77,11 +80,22 @@ if __name__ == "__main__":
             (d for d in n_dir.iterdir() if d.is_dir() and re.match(r"r\d+$", d.name)),
             key=lambda d: int(d.name[1:])
         )
-        t_grid, cfc_mean = mean_cfc_trajectory(r_dirs)
+        t_grid, cfc_mean, cfc_std = mean_cfc_trajectory(r_dirs)
         if t_grid is None:
             print(f"SKIP N={n}: no cfc data")
             continue
+        ax.fill_between(t_grid, cfc_mean - cfc_std, cfc_mean + cfc_std,
+                        color=color, alpha=0.2)
         ax.plot(t_grid, cfc_mean, lw=1.8, color=color, label=f"N = {n}")
+
+        slope, intercept = np.polyfit(t_grid, cfc_mean, 1)
+        fit_line = slope * t_grid + intercept
+        ss_res = np.sum((cfc_mean - fit_line) ** 2)
+        ss_tot = np.sum((cfc_mean - cfc_mean.mean()) ** 2)
+        r2 = 1 - ss_res / ss_tot if ss_tot > 0 else float("nan")
+        ax.plot(t_grid, fit_line, lw=1.2, color="black", ls="--", alpha=0.5)
+
+        print(f"{n:>6}  {slope:>18.4f}  {r2:>6.4f}")
         print(f"  N={n}: {len(r_dirs)} realizaciones, tf≈{t_grid[-1]:.0f} s")
 
     ax.set_xlabel("t [s]", fontsize=13)

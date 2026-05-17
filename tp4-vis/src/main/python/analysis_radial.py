@@ -71,7 +71,10 @@ def shell_edges():
     return np.arange(R_OBS_EFF, R_WALL_EFF, DS)
 
 
-def accumulate_radial(frames_dir, n, s_edges, target_idx=None):
+T_MIN = 2000.0  # discard transient: only use t >= T_MIN
+
+
+def accumulate_radial(frames_dir, n, s_edges, target_idx=None, t_min=T_MIN):
     ns = len(s_edges)
     rho_sum = np.zeros(ns)
     vel_sum = np.zeros(ns)
@@ -79,6 +82,8 @@ def accumulate_radial(frames_dir, n, s_edges, target_idx=None):
     target_frames = []
 
     for t, x, y, pvx, pvy, st in load_frames_raw(frames_dir, n):
+        if t < t_min:
+            continue
         frame_count += 1
         r_mag = np.sqrt(x**2 + y**2)
         dot   = x * pvx + y * pvy
@@ -109,6 +114,8 @@ def accumulate_radial(frames_dir, n, s_edges, target_idx=None):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--bin-dir",  default=None)
+    ap.add_argument("--runs-dir", default=None, help="Override runs directory (default: <bin-dir>/runs)")
+    ap.add_argument("--tp3-bin",  default=None, help="TP3 bin dir for Jin(N) comparison")
     ap.add_argument("--n-values", nargs="+", type=int, default=None)
     a = ap.parse_args()
 
@@ -118,11 +125,15 @@ def main():
     n_vals        = a.n_values or N_VALUES
     n_vals_target = a.n_values or N_VALUES_TARGET
     n_vals_all    = sorted(set(n_vals) | set(n_vals_target))
-    rad_root  = os.path.join(bin_root, "runs")
+    rad_root  = os.path.abspath(a.runs_dir) if a.runs_dir else os.path.join(bin_root, "runs")
 
     s_edges   = shell_edges()
     s_centres = s_edges + DS / 2
     idx_target = int(np.argmin(np.abs(s_centres - S_TARGET)))
+
+    def _ms(vals):
+        a_ = np.array(vals)
+        return float(np.mean(a_)), (float(np.std(a_, ddof=1)) if len(a_) > 1 else 0.0)
 
     rho_profiles = {}; vel_profiles = {}; jin_profiles = {}
     jin_at_target = {}; jin_std_target = {}
@@ -176,10 +187,6 @@ def main():
         vel_profiles[n] = vel_mat.mean(axis=0)
         jin_profiles[n] = jin_mat.mean(axis=0)
 
-        def _ms(vals):
-            a_ = np.array(vals)
-            return float(np.mean(a_)), (float(np.std(a_, ddof=1)) if len(a_) > 1 else 0.0)
-
         rho_at_target[n], rho_std_target[n] = _ms(rho_tgt_per_r)
         vel_at_target[n], vel_std_target[n] = _ms(vel_tgt_per_r)
         jin_at_target[n], jin_std_target[n] = _ms(jin_tgt_per_r)
@@ -202,7 +209,7 @@ def main():
         for i, n in enumerate(n_vals):
             if n not in profiles:
                 continue
-            ax.plot(s_centres, profiles[n], lw=2, color=colors[i])
+            ax.plot(s_centres, profiles[n], lw=2, color=colors[i], alpha=0.8)
         ax.set_xlabel("S [m]", fontsize=13)
         ax.set_ylabel(ylabel, fontsize=13)
         ax.set_title(f"TP4 – {ylabel}", fontsize=13)
@@ -222,7 +229,7 @@ def main():
             if n not in jin_profiles:
                 continue
             ax_z.plot(s_centres[s_zoom_mask], jin_profiles[n][s_zoom_mask],
-                      lw=2, color=colors[i])
+                      lw=2, color=colors[i], alpha=0.8)
         ax_z.set_xlabel("S [m]", fontsize=13)
         ax_z.set_ylabel(r"$J_{in}(S)$", fontsize=13)
         ax_z.set_title(r"TP4 – $J_{in}(S)$ detalle $S \in [1.5, 5]$ m", fontsize=13)
@@ -235,29 +242,95 @@ def main():
         plt.close(fig_z)
         print(f"Saved → {out_z}")
 
+    # ── TP3 Jin at target ─────────────────────────────────────────────────────
+    tp3_n_plot = []
+    tp3_jin_at_target = {}
+    tp3_jin_std_target = {}
+    if a.tp3_bin:
+        tp3_rad_root = os.path.join(os.path.abspath(a.tp3_bin), "radial")
+        if os.path.isdir(tp3_rad_root):
+            tp3_n_dirs = sorted(
+                (d for d in Path(tp3_rad_root).iterdir()
+                 if d.is_dir() and re.match(r"N\d+$", d.name)),
+                key=lambda d: int(d.name[1:])
+            )
+            for n_dir in tp3_n_dirs:
+                n3 = int(n_dir.name[1:])
+                r_dirs3 = sorted(
+                    d for d in n_dir.iterdir()
+                    if d.is_dir() and (d / "frames").is_dir()
+                )
+                jin_tgt3 = []
+                for r_dir in r_dirs3:
+                    _, _, fc3, tgt3 = accumulate_radial(
+                        str(r_dir / "frames"), n3, s_edges, idx_target, t_min=0.0)
+                    if fc3 == 0 or not tgt3:
+                        continue
+                    tgt_arr3 = np.array(tgt3)
+                    jin_tgt3.append(float(np.mean(tgt_arr3[:, 2])))
+                if jin_tgt3:
+                    tp3_jin_at_target[n3], tp3_jin_std_target[n3] = _ms(jin_tgt3)
+                    tp3_n_plot.append(n3)
+            print(f"TP3: Jin computed for N = {tp3_n_plot}")
+
     # vs-N plots at S~S_TARGET
     n_plot = [n for n in n_vals_target if n in jin_at_target]
     if n_plot:
         n_arr = np.array(n_plot)
-        target_defs = [
-            (r"$J_{in}(S \approx 2\,\mathrm{m})$",   "#e74c3c", jin_at_target, jin_std_target, "tp4_Jin_vs_N.png"),
-            (r"$\langle\rho_f^{in}\rangle(S \approx 2\,\mathrm{m})$", "#3498db", rho_at_target, rho_std_target, "tp4_rho_vs_N.png"),
-            (r"$|\langle v_f^{in}\rangle|(S \approx 2\,\mathrm{m})$", "#2ecc71", vel_at_target, vel_std_target, "tp4_v_vs_N.png"),
-        ]
-        for ylabel, color, data, std_data, fname in target_defs:
-            fig_t, ax_t = plt.subplots(figsize=(7, 5))
-            ax_t.errorbar(n_arr, [data[n] for n in n_plot],
-                          yerr=[std_data[n] for n in n_plot],
-                          fmt="o-", lw=2, color=color, capsize=5, elinewidth=1.5)
-            ax_t.set_xlabel("N", fontsize=13)
-            ax_t.set_ylabel(ylabel, fontsize=13)
-            ax_t.set_title(f"TP4 – {ylabel}", fontsize=13)
-            ax_t.grid(True, ls="--", alpha=0.4)
-            plt.tight_layout()
-            out_t = os.path.join(img_dir, fname)
-            plt.savefig(out_t, dpi=150)
-            plt.close(fig_t)
-            print(f"Saved → {out_t}")
+
+        # Combined rho + v (dual y-axis)
+        fig_rv, ax_rho = plt.subplots(figsize=(7, 5))
+        ax_vel = ax_rho.twinx()
+        ax_rho.errorbar(n_arr, [rho_at_target[n] for n in n_plot],
+                        yerr=[rho_std_target[n] for n in n_plot],
+                        fmt="o-", lw=2, color="#3498db", capsize=5, elinewidth=1.5,
+                        label=r"$\langle\rho_f^{in}\rangle$")
+        ax_vel.errorbar(n_arr, [vel_at_target[n] for n in n_plot],
+                        yerr=[vel_std_target[n] for n in n_plot],
+                        fmt="s--", lw=2, color="#2ecc71", capsize=5, elinewidth=1.5,
+                        label=r"$|\langle v_f^{in}\rangle|$")
+        ax_rho.set_xlabel("N", fontsize=13)
+        ax_rho.set_ylabel(r"$\langle\rho_f^{in}\rangle\ (S \approx 2\,\mathrm{m})$",
+                          fontsize=13, color="#3498db")
+        ax_vel.set_ylabel(r"$|\langle v_f^{in}\rangle|\ (S \approx 2\,\mathrm{m})$",
+                          fontsize=13, color="#2ecc71")
+        ax_rho.tick_params(axis="y", labelcolor="#3498db")
+        ax_vel.tick_params(axis="y", labelcolor="#2ecc71")
+        lines1, labels1 = ax_rho.get_legend_handles_labels()
+        lines2, labels2 = ax_vel.get_legend_handles_labels()
+        ax_rho.legend(lines1 + lines2, labels1 + labels2, fontsize=11)
+        ax_rho.set_title(r"TP4 – $\langle\rho_f^{in}\rangle$ y $|\langle v_f^{in}\rangle|$ vs $N$",
+                         fontsize=13)
+        ax_rho.grid(True, ls="--", alpha=0.4)
+        plt.tight_layout()
+        out_rv = os.path.join(img_dir, "tp4_rho_v_vs_N.png")
+        plt.savefig(out_rv, dpi=150)
+        plt.close(fig_rv)
+        print(f"Saved → {out_rv}")
+
+        # Jin(N): TP4 vs TP3
+        fig_j, ax_j = plt.subplots(figsize=(7, 5))
+        ax_j.errorbar(n_arr, [jin_at_target[n] for n in n_plot],
+                      yerr=[jin_std_target[n] for n in n_plot],
+                      fmt="o-", lw=2, color="#e74c3c", capsize=5, elinewidth=1.5,
+                      label="TP4 – Time-Driven")
+        if tp3_n_plot:
+            tp3_n_arr = np.array(tp3_n_plot)
+            ax_j.errorbar(tp3_n_arr,
+                          [tp3_jin_at_target[n] for n in tp3_n_plot],
+                          yerr=[tp3_jin_std_target[n] for n in tp3_n_plot],
+                          fmt="s--", lw=2, color="#2c3e50", capsize=5, elinewidth=1.5,
+                          label="TP3 – Event-Driven")
+        ax_j.set_xlabel("N", fontsize=13)
+        ax_j.set_ylabel(r"$J_{in}(S \approx 2\,\mathrm{m})$", fontsize=13)
+        ax_j.set_title(r"TP4 vs TP3 – $J_{in}$ vs $N$", fontsize=13)
+        ax_j.legend(fontsize=11)
+        ax_j.grid(True, ls="--", alpha=0.4)
+        plt.tight_layout()
+        out_j = os.path.join(img_dir, "tp4_Jin_vs_N.png")
+        plt.savefig(out_j, dpi=150)
+        plt.close(fig_j)
+        print(f"Saved → {out_j}")
 
 
 if __name__ == "__main__":
