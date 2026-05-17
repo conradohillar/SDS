@@ -71,10 +71,10 @@ def shell_edges():
     return np.arange(R_OBS_EFF, R_WALL_EFF, DS)
 
 
-T_MIN = 2000.0  # discard transient: only use t >= T_MIN
+T_MIN_DEFAULT = 0.0  # default: use all frames; override via --t-min
 
 
-def accumulate_radial(frames_dir, n, s_edges, target_idx=None, t_min=T_MIN):
+def accumulate_radial(frames_dir, n, s_edges, target_idx=None, t_min=0.0):
     ns = len(s_edges)
     rho_sum = np.zeros(ns)
     vel_sum = np.zeros(ns)
@@ -116,6 +116,7 @@ def main():
     ap.add_argument("--bin-dir",  default=None)
     ap.add_argument("--runs-dir", default=None, help="Override runs directory (default: <bin-dir>/runs)")
     ap.add_argument("--tp3-bin",  default=None, help="TP3 bin dir for Jin(N) comparison")
+    ap.add_argument("--t-min",    type=float, default=0.0, help="Discard frames with t < T_MIN (default: 0)")
     ap.add_argument("--n-values", nargs="+", type=int, default=None)
     a = ap.parse_args()
 
@@ -161,7 +162,7 @@ def main():
 
         for r_dir in r_dirs:
             print(f"  loading {r_dir.name} … ", end="", flush=True)
-            rs, vs, fc, tgt = accumulate_radial(str(r_dir / "frames"), n, s_edges, idx_target)
+            rs, vs, fc, tgt = accumulate_radial(str(r_dir / "frames"), n, s_edges, idx_target, t_min=a.t_min)
             print(f"{fc} frames")
             if fc == 0:
                 continue
