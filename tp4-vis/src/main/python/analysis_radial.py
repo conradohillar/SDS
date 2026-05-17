@@ -74,15 +74,19 @@ def shell_edges():
 T_MIN_DEFAULT = 0.0  # default: use all frames; override via --t-min
 
 
-def accumulate_radial(frames_dir, n, s_edges, target_idx=None, t_min=0.0):
+def accumulate_radial(frames_dir, n, s_edges, target_idx=None, t_min=0.0, stride=1):
     ns = len(s_edges)
     rho_sum = np.zeros(ns)
     vel_sum = np.zeros(ns)
     frame_count = 0
+    raw_count = 0
     target_frames = []
 
     for t, x, y, pvx, pvy, st in load_frames_raw(frames_dir, n):
         if t < t_min:
+            continue
+        raw_count += 1
+        if (raw_count - 1) % stride != 0:
             continue
         frame_count += 1
         r_mag = np.sqrt(x**2 + y**2)
@@ -117,6 +121,7 @@ def main():
     ap.add_argument("--runs-dir", default=None, help="Override runs directory (default: <bin-dir>/runs)")
     ap.add_argument("--tp3-bin",  default=None, help="TP3 bin dir for Jin(N) comparison")
     ap.add_argument("--t-min",    type=float, default=0.0, help="Discard frames with t < T_MIN (default: 0)")
+    ap.add_argument("--stride",   type=int,   default=10,  help="Use every Nth frame (default: 10)")
     ap.add_argument("--n-values", nargs="+", type=int, default=None)
     a = ap.parse_args()
 
@@ -162,7 +167,7 @@ def main():
 
         for r_dir in r_dirs:
             print(f"  loading {r_dir.name} … ", end="", flush=True)
-            rs, vs, fc, tgt = accumulate_radial(str(r_dir / "frames"), n, s_edges, idx_target, t_min=a.t_min)
+            rs, vs, fc, tgt = accumulate_radial(str(r_dir / "frames"), n, s_edges, idx_target, t_min=a.t_min, stride=a.stride)
             print(f"{fc} frames")
             if fc == 0:
                 continue
@@ -264,7 +269,7 @@ def main():
                 jin_tgt3 = []
                 for r_dir in r_dirs3:
                     _, _, fc3, tgt3 = accumulate_radial(
-                        str(r_dir / "frames"), n3, s_edges, idx_target, t_min=0.0)
+                        str(r_dir / "frames"), n3, s_edges, idx_target, t_min=0.0, stride=a.stride)
                     if fc3 == 0 or not tgt3:
                         continue
                     tgt_arr3 = np.array(tgt3)
