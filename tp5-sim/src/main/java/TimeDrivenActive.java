@@ -74,8 +74,30 @@ public class TimeDrivenActive {
         xt=new double[n]; yt=new double[n]; at=new double[n];
         eta=new double[n];
         placeParticles();
+        relax(0.001, 5000, 1e-4);
         for (int i=0;i<n;i++) alpha[i] = 2*Math.PI*rng.nextDouble();
         resampleSigma();
+    }
+
+    // Pre-t=0 relaxation: pure overdamped descent under contact + wall forces only
+    // (no propulsion, no angular dynamics). Resolves initial hex-grid overlaps so the
+    // first observable is not contaminated by huge spurious "velocities" from contact
+    // forces being interpreted as dr/dt.
+    void relax(double dtRelax, int maxSteps, double tolMaxF) {
+        double tol2 = tolMaxF * tolMaxF;
+        for (int step = 0; step < maxSteps; step++) {
+            computeForces(x, y, fx, fy);
+            double maxF2 = 0.0;
+            for (int i = 0; i < n; i++) {
+                double f2 = fx[i]*fx[i] + fy[i]*fy[i];
+                if (f2 > maxF2) maxF2 = f2;
+            }
+            if (maxF2 < tol2) return;
+            for (int i = 0; i < n; i++) {
+                x[i] += dtRelax * fx[i];
+                y[i] += dtRelax * fy[i];
+            }
+        }
     }
 
     void resampleSigma() {
