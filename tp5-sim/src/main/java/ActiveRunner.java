@@ -17,8 +17,8 @@ import java.util.concurrent.*;
  */
 public class ActiveRunner {
 
-    static final String[] ALL_MODES = {"quiral", "random"};
-    static final int[]    N_VALUES  = {20, 21, 22, 23, 24, 25, 26, 27};
+    static final String[] ALL_MODES        = {"quiral", "random"};
+    static final int[]    DEFAULT_N_VALUES = {20, 21, 22, 23, 24, 25, 26, 27};
 
     public static void main(String[] args) throws Exception {
         double  tf       = 10000.0;
@@ -28,6 +28,7 @@ public class ActiveRunner {
         boolean noFrames = false;
         String  bin      = TimeDrivenActive.resolveBin();
         List<String> modeList = new ArrayList<>(Arrays.asList(ALL_MODES));
+        int[] nValues = DEFAULT_N_VALUES;
 
         for (int i=0; i<args.length; i++) switch (args[i]) {
             case "--tf"        -> tf       = Double.parseDouble(args[++i]);
@@ -38,8 +39,18 @@ public class ActiveRunner {
             case "--bin"       -> bin      = args[++i];
             case "--modes"     -> { modeList.clear();
                                     for (String m : args[++i].split(",")) modeList.add(m.trim()); }
+            case "--n-values"  -> { String[] tok = args[++i].split(",");
+                                    nValues = new int[tok.length];
+                                    for (int k=0;k<tok.length;k++) nValues[k] = Integer.parseInt(tok[k].trim()); }
+            case "--r-p"       -> TimeDrivenActive.R_P       = Double.parseDouble(args[++i]);
+            case "--r-domain"  -> TimeDrivenActive.R_DOMAIN  = Double.parseDouble(args[++i]);
+            case "--v0"        -> TimeDrivenActive.V0        = Double.parseDouble(args[++i]);
+            case "--kappa"     -> TimeDrivenActive.KAPPA     = Double.parseDouble(args[++i]);
+            case "--sigma-eta" -> TimeDrivenActive.SIGMA_ETA = Double.parseDouble(args[++i]);
         }
+        TimeDrivenActive.refreshDerived();
         String[] MODES = modeList.toArray(new String[0]);
+        final int[] N_VALUES = nValues;
 
         int nThreads = Runtime.getRuntime().availableProcessors();
         ExecutorService pool = Executors.newFixedThreadPool(nThreads);
@@ -48,6 +59,9 @@ public class ActiveRunner {
         int totalTasks = MODES.length * N_VALUES.length * runs;
         System.out.printf("ActiveRunner: modes=%s N=%s runs=%d threads=%d%n",
             Arrays.toString(MODES), Arrays.toString(N_VALUES), runs, nThreads);
+        System.out.printf("Physical: r_p=%.3f R=%.3f v0=%.3f kappa=%.2f sigma_eta=%.3f%n",
+            TimeDrivenActive.R_P, TimeDrivenActive.R_DOMAIN, TimeDrivenActive.V0,
+            TimeDrivenActive.KAPPA, TimeDrivenActive.SIGMA_ETA);
         System.out.printf("Total tasks: %d%n", totalTasks);
 
         final double tfF=tf, dtF=dt, dt2F=dt2;

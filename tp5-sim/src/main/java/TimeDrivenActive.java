@@ -36,15 +36,22 @@ import java.util.*;
  */
 public class TimeDrivenActive {
 
-    // ── Physical constants ────────────────────────────────────────────────────
-    static final double R_P       = 1.6;
-    static final double R_DOMAIN  = 10.0;
-    static final double V0        = 0.825;
-    static final double KAPPA     = 50.0;
-    static final double SIGMA_ETA = 0.05;
-    static final double SIGMA_PP  = 2.0 * R_P;
-    static final double R_EFF     = R_DOMAIN - R_P;
-    static final double TWO_PI_R  = 2.0 * Math.PI * R_DOMAIN;
+    // ── Physical parameters (mutable, set before constructing the simulation) ─
+    static double R_P       = 1.6;
+    static double R_DOMAIN  = 10.0;
+    static double V0        = 0.825;
+    static double KAPPA     = 50.0;
+    static double SIGMA_ETA = 0.05;
+    // Derived – recomputed by refreshDerived() whenever R_P or R_DOMAIN change.
+    static double SIGMA_PP  = 2.0 * R_P;
+    static double R_EFF     = R_DOMAIN - R_P;
+    static double TWO_PI_R  = 2.0 * Math.PI * R_DOMAIN;
+
+    static void refreshDerived() {
+        SIGMA_PP = 2.0 * R_P;
+        R_EFF    = R_DOMAIN - R_P;
+        TWO_PI_R = 2.0 * Math.PI * R_DOMAIN;
+    }
 
     // ── State ─────────────────────────────────────────────────────────────────
     final int    n;
@@ -324,6 +331,11 @@ public class TimeDrivenActive {
             case "--n"         -> n        = Integer.parseInt(args[++i]);
             case "--seed"      -> seed     = Long.parseLong(args[++i]);
             case "--mode"      -> mode     = args[++i];
+            case "--r-p"       -> R_P      = Double.parseDouble(args[++i]);
+            case "--r-domain"  -> R_DOMAIN = Double.parseDouble(args[++i]);
+            case "--v0"        -> V0       = Double.parseDouble(args[++i]);
+            case "--kappa"     -> KAPPA    = Double.parseDouble(args[++i]);
+            case "--sigma-eta" -> SIGMA_ETA= Double.parseDouble(args[++i]);
             case "--dt"        -> dt       = Double.parseDouble(args[++i]);
             case "--tf"        -> tf       = Double.parseDouble(args[++i]);
             case "--dt2"       -> dt2      = Double.parseDouble(args[++i]);
@@ -331,10 +343,13 @@ public class TimeDrivenActive {
             case "--bin"       -> binPath  = args[++i];
             case "--run-id"    -> runId    = args[++i];
         }
+        refreshDerived();
 
         Path outDir = Paths.get(binPath).resolve(runId);
         System.out.printf("TimeDrivenActive N=%d mode=%s seed=%d dt=%.2e tf=%.1f%n",
             n, mode, seed, dt, tf);
+        System.out.printf("Physical: r_p=%.3f R=%.3f v0=%.3f kappa=%.2f sigma_eta=%.3f%n",
+            R_P, R_DOMAIN, V0, KAPPA, SIGMA_ETA);
         System.out.printf("Output → %s%n", outDir);
         long t0 = System.currentTimeMillis();
         run(n, seed, mode, dt, tf, dt2, noFrames, outDir);

@@ -14,22 +14,47 @@ Usage:
     python3 analysis_pressure_vel.py [--bin-dir PATH] [--stat-frac 0.5]
                                      [--representative-n N1 N2]
 """
-import argparse, os
+import argparse, os, glob, re
 from pathlib import Path
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-N_ALL   = list(range(20, 28))
 MODES   = ["quiral", "random"]
 COLORS  = ["#e74c3c", "#3498db"]   # quiral=red, random=blue
-V0      = 0.825  # cm/s
+DEFAULT_V0 = 0.825  # fallback when no metadata.txt is found
 
 
 def _default_bin():
     s = os.path.dirname(os.path.abspath(__file__))
     return os.path.normpath(os.path.join(s, "..", "..", "..", "..", "tp5-bin"))
+
+
+def discover_n_values(bin_root, modes):
+    """Scan runs/<mode>/N<n>/ directories and return sorted unique N values."""
+    ns = set()
+    for mode in modes:
+        for d in glob.glob(os.path.join(bin_root, "runs", mode, "N*")):
+            m = re.match(r"N(\d+)$", os.path.basename(d))
+            if m:
+                ns.add(int(m.group(1)))
+    return sorted(ns)
+
+
+def read_v0(bin_root, modes, default=DEFAULT_V0):
+    """Read v0 from the first metadata.txt found under runs/."""
+    for mode in modes:
+        for meta in glob.glob(os.path.join(bin_root, "runs", mode, "N*", "r*", "metadata.txt")):
+            try:
+                with open(meta) as f:
+                    for line in f:
+                        parts = line.strip().split()
+                        if len(parts) == 2 and parts[0] == "v0":
+                            return float(parts[1])
+            except Exception:
+                continue
+    return default
 
 
 def load_stats(stats_path):
@@ -75,15 +100,21 @@ def main():
     ap.add_argument("--bin-dir",         default=None)
     ap.add_argument("--stat-frac",       type=float, default=0.5,
                     help="Fraction of simulation tail used for stationary stats")
-    ap.add_argument("--representative-n", nargs=2, type=int, default=[20, 27],
-                    help="Two N values used for time-series and v-vs-P plots")
+    ap.add_argument("--representative-n", nargs=2, type=int, default=None,
+                    help="Two N values used for time-series and v-vs-P plots (default: min/max)")
     ap.add_argument("--n-runs",          type=int, default=5)
     a = ap.parse_args()
 
     bin_root = os.path.abspath(a.bin_dir) if a.bin_dir else _default_bin()
     img_dir  = os.path.join(bin_root, "images")
     os.makedirs(img_dir, exist_ok=True)
-    rep_n    = a.representative_n
+
+    N_ALL = discover_n_values(bin_root, MODES)
+    if not N_ALL:
+        print(f"No runs found under {bin_root}/runs/"); return
+    V0 = read_v0(bin_root, MODES)
+    rep_n = a.representative_n if a.representative_n else [N_ALL[0], N_ALL[-1]]
+    print(f"N values: {N_ALL}  |  v0 = {V0}  |  representative N = {rep_n}")
 
     # ── 1 & 2: Time series and v-vs-P for representative N values ─────────────
     for mode, col in zip(MODES, COLORS):
