@@ -17,8 +17,8 @@ import java.util.concurrent.*;
  */
 public class ActiveRunner {
 
-    static final String[] MODES   = {"quiral", "random"};
-    static final int[]    N_VALUES = {20, 21, 22, 23, 24, 25, 26, 27};
+    static final String[] ALL_MODES = {"quiral", "random"};
+    static final int[]    N_VALUES  = {20, 21, 22, 23, 24, 25, 26, 27};
 
     public static void main(String[] args) throws Exception {
         double  tf       = 10000.0;
@@ -27,6 +27,7 @@ public class ActiveRunner {
         int     runs     = 5;
         boolean noFrames = false;
         String  bin      = TimeDrivenActive.resolveBin();
+        List<String> modeList = new ArrayList<>(Arrays.asList(ALL_MODES));
 
         for (int i=0; i<args.length; i++) switch (args[i]) {
             case "--tf"        -> tf       = Double.parseDouble(args[++i]);
@@ -35,7 +36,10 @@ public class ActiveRunner {
             case "--runs"      -> runs     = Integer.parseInt(args[++i]);
             case "--no-frames" -> noFrames = true;
             case "--bin"       -> bin      = args[++i];
+            case "--modes"     -> { modeList.clear();
+                                    for (String m : args[++i].split(",")) modeList.add(m.trim()); }
         }
+        String[] MODES = modeList.toArray(new String[0]);
 
         int nThreads = Runtime.getRuntime().availableProcessors();
         ExecutorService pool = Executors.newFixedThreadPool(nThreads);
