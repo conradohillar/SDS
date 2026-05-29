@@ -133,6 +133,7 @@ def main():
         fig2, ax2 = plt.subplots(figsize=(10, 5))
         ax2.set_xlabel("t [s]", fontsize=12)
         ax2.set_ylabel("v̄ [cm/s]", fontsize=12)
+        ax2.set_yscale("log")
         ax2.set_title(f"TP5 – {mode}: v̄(t) para todos los N", fontsize=13)
         ax2.axhline(threshold, ls=":", color="#7f8c8d", lw=1.5,
                     label=f"umbral = {threshold:.3f} cm/s")
