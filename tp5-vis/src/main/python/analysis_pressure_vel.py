@@ -117,7 +117,9 @@ def main():
     print(f"N values: {N_ALL}  |  v0 = {V0}  |  representative N = {rep_n}")
 
     # ── 1 & 2: Time series and v-vs-P for representative N values ─────────────
-    for mode, col in zip(MODES, COLORS):
+    n_colors = plt.cm.tab10(np.linspace(0.0, 0.6, max(len(rep_n), 1)))
+
+    for mode in MODES:
         fig_t, axes_t = plt.subplots(2, 1, figsize=(9, 7), sharex=True)
         axes_t[0].set_ylabel("v̄ [cm/s]", fontsize=12)
         axes_t[1].set_ylabel("P [cm/s / cm]", fontsize=12)
@@ -131,25 +133,49 @@ def main():
         ax_vp.set_ylabel("v̄ [cm/s]", fontsize=12)
         ax_vp.set_title(f"TP5 – {mode}: v̄ vs P", fontsize=13)
 
-        lw_list = [2.0, 1.8, 1.5, 1.2, 1.0]
-        ls_list = ["-", "--", "-.", ":", (0, (3, 1, 1, 1))]
-        for idx_n, (n_val, lw, ls) in enumerate(zip(rep_n, lw_list, ls_list)):
+        for n_val, nc in zip(rep_n, n_colors):
             results = load_mode_n(bin_root, mode, n_val, a.n_runs)
             if not results:
                 print(f"  No data: {mode} N={n_val}"); continue
-            t, v, p = results[0]  # use first realization for time-series plots
-            label = f"N = {n_val}"
-            axes_t[0].plot(t, v, lw=lw, ls=ls, label=label, alpha=0.85)
-            axes_t[1].plot(t, p, lw=lw, ls=ls, label=label, alpha=0.85)
-            ax_vp.plot(p, v, lw=lw, ls=ls, label=label, alpha=0.7)
 
-        for ax in axes_t: ax.legend(fontsize=11); ax.grid(True, ls="--", alpha=0.4)
+            label  = f"N = {n_val}"
+            n_real = len(results)
+            t_ref  = results[0][0]
+            v_stack = np.array([v for (_, v, _) in results])
+            p_stack = np.array([p for (_, _, p) in results])
+            v_mean_ts = v_stack.mean(axis=0)
+            p_mean_ts = p_stack.mean(axis=0)
+            v_std_ts  = v_stack.std(axis=0, ddof=1) if n_real > 1 else np.zeros_like(v_mean_ts)
+            p_std_ts  = p_stack.std(axis=0, ddof=1) if n_real > 1 else np.zeros_like(p_mean_ts)
+
+            # v̄(t): mean + shaded ±1σ (lower band clipped for log scale)
+            axes_t[0].plot(t_ref, v_mean_ts, lw=1.5, color=nc, label=label)
+            axes_t[0].fill_between(t_ref,
+                                   np.maximum(v_mean_ts - v_std_ts, v_mean_ts * 1e-3),
+                                   v_mean_ts + v_std_ts, alpha=0.2, color=nc)
+
+            # P(t): mean + shaded ±1σ
+            axes_t[1].plot(t_ref, p_mean_ts, lw=1.5, color=nc, label=label)
+            axes_t[1].fill_between(t_ref,
+                                   np.maximum(p_mean_ts - p_std_ts, 0),
+                                   p_mean_ts + p_std_ts, alpha=0.2, color=nc)
+
+            # v vs P: all realizations as translucent lines → density via overlap
+            alpha_r = max(0.03, min(0.25, 2.0 / n_real))
+            for (_, v, p) in results:
+                ax_vp.plot(p, v, lw=0.4, alpha=alpha_r, color=nc)
+            ax_vp.plot(p_mean_ts, v_mean_ts, lw=1.8, color=nc, label=label)
+
+        for ax in axes_t:
+            ax.legend(fontsize=11)
+            ax.grid(True, ls="--", alpha=0.4)
         plt.tight_layout()
         fig_t.savefig(os.path.join(img_dir, f"tp5_{mode}_vP_vs_t.png"), dpi=150)
         plt.close(fig_t)
         print(f"Saved → {img_dir}/tp5_{mode}_vP_vs_t.png")
 
-        ax_vp.legend(fontsize=11); ax_vp.grid(True, ls="--", alpha=0.4)
+        ax_vp.legend(fontsize=11)
+        ax_vp.grid(True, ls="--", alpha=0.4)
         plt.tight_layout()
         fig_vp.savefig(os.path.join(img_dir, f"tp5_{mode}_v_vs_P.png"), dpi=150)
         plt.close(fig_vp)
