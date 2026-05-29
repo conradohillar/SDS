@@ -63,7 +63,7 @@ def load_frames(frames_dir, n, skip_time=0.0):
     return frames
 
 
-def animate(run_dir, fps, arrow_len, skip_time=0.0):
+def animate(run_dir, speed, arrow_len, skip_time=0.0):
     meta_path = os.path.join(run_dir, "metadata.txt")
     if not os.path.exists(meta_path):
         print(f"ERROR: {meta_path} not found"); return
@@ -77,7 +77,9 @@ def animate(run_dir, fps, arrow_len, skip_time=0.0):
     frames = load_frames(frames_dir, N, skip_time)
     if not frames:
         print(f"No frames found in {frames_dir}"); return
-    print(f"Loaded {len(frames)} frames  (N={N}, mode={mode}, R={R})")
+    dt2 = frames[1][0] - frames[0][0] if len(frames) > 1 else 0.1
+    interval_ms = dt2 / speed * 1000
+    print(f"Loaded {len(frames)} frames  (N={N}, mode={mode}, R={R}, dt2={dt2:.3f}s, interval={interval_ms:.1f}ms)")
 
     C_POS  = "#e74c3c"   # σ = +1 (quiral / CW)
     C_NEG  = "#3498db"   # σ = -1 (CCW)
@@ -122,7 +124,7 @@ def animate(run_dir, fps, arrow_len, skip_time=0.0):
         time_txt.set_text(f"t = {t:.1f} s")
         return circles + [quiv, time_txt]
 
-    ani = FuncAnimation(fig, update, frames=len(frames), interval=1000/fps, blit=True)
+    ani = FuncAnimation(fig, update, frames=len(frames), interval=interval_ms, blit=True)
     plt.tight_layout()
     plt.show()
 
@@ -133,7 +135,8 @@ def main():
     ap.add_argument("--mode",      default="quiral", choices=["quiral","random"])
     ap.add_argument("--n",         type=int, default=20)
     ap.add_argument("--r",         type=int, default=0)
-    ap.add_argument("--fps",       type=int, default=30)
+    ap.add_argument("--speed",     type=float, default=1.0,
+                    help="Simulation seconds per animation second (default 1.0 = real time, 10.0 = 10x faster)")
     ap.add_argument("--arrow-len", type=float, default=0.75,
                     help="Arrow length as fraction of R_P (default 0.75)")
     ap.add_argument("--skip-time", type=float, default=0.0)
@@ -144,7 +147,7 @@ def main():
     if not os.path.isdir(run_dir):
         print(f"Run dir not found: {run_dir}"); return
 
-    animate(run_dir, a.fps, a.arrow_len, a.skip_time)
+    animate(run_dir, a.speed, a.arrow_len, a.skip_time)
 
 
 if __name__ == "__main__":

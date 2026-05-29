@@ -51,7 +51,10 @@ def main():
     ap.add_argument("--mode",       default="quiral", choices=["quiral","random"])
     ap.add_argument("--n",          type=int,   default=20)
     ap.add_argument("--r",          type=int,   default=0)
-    ap.add_argument("--fps",        type=int,   default=30)
+    ap.add_argument("--speed",      type=float, default=1.0,
+                    help="Simulation seconds per animation second (default 1.0 = real time)")
+    ap.add_argument("--fps",        type=int,   default=None,
+                    help="Override output fps (default: derived from --speed and dt2)")
     ap.add_argument("--skip-time",  type=float, default=0.0)
     ap.add_argument("--arrow-len",  type=float, default=0.75,
                     help="Arrow length as fraction of R_P (default 0.75)")
@@ -73,7 +76,9 @@ def main():
         fr = parse_frame(os.path.join(frames_dir, fname), N)
         if fr[0] >= a.skip_time:
             frames.append(fr)
-    print(f"Rendering {len(frames)} frames  N={N}  mode={mode}")
+    dt2 = frames[1][0] - frames[0][0] if len(frames) > 1 else 0.1
+    fps = a.fps if a.fps is not None else max(1, round(a.speed / dt2))
+    print(f"Rendering {len(frames)} frames  N={N}  mode={mode}  dt2={dt2:.3f}s  fps={fps}")
 
     C_POS = "#e74c3c"; C_NEG = "#3498db"; C_WALL = "#ecf0f1"; C_BG = "#1a1a2e"
     fig, ax = plt.subplots(figsize=(7, 7))
@@ -107,7 +112,7 @@ def main():
     ani = FuncAnimation(fig, update, frames=len(frames), blit=True)
     out = a.output or os.path.join(bin_root, "animations", f"tp5_{mode}_N{N}_r{a.r}.mp4")
     os.makedirs(os.path.dirname(out), exist_ok=True)
-    writer = FFMpegWriter(fps=a.fps, bitrate=2000)
+    writer = FFMpegWriter(fps=fps, bitrate=2000)
     ani.save(out, writer=writer, dpi=120)
     plt.close(fig)
     print(f"Saved → {out}")
