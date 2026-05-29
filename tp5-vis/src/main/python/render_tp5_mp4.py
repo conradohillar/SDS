@@ -53,7 +53,8 @@ def main():
     ap.add_argument("--r",          type=int,   default=0)
     ap.add_argument("--fps",        type=int,   default=30)
     ap.add_argument("--skip-time",  type=float, default=0.0)
-    ap.add_argument("--arrow-len",  type=float, default=0.5)
+    ap.add_argument("--arrow-len",  type=float, default=0.75,
+                    help="Arrow length as fraction of R_P (default 0.75)")
     ap.add_argument("--output",     default=None)
     a = ap.parse_args()
 
@@ -82,8 +83,10 @@ def main():
     ax.add_patch(plt.Circle((0,0), R, color=C_WALL, fill=False, lw=2, zorder=1))
     circles = [plt.Circle((0,0), R_P, color=C_POS, zorder=3) for _ in range(N)]
     for c in circles: ax.add_patch(c)
+    display_len = a.arrow_len * R_P
+
     quiv = ax.quiver(np.zeros(N), np.zeros(N), np.zeros(N), np.zeros(N),
-                     color="#bdc3c7", alpha=0.6, scale=1/a.arrow_len,
+                     color="#bdc3c7", alpha=0.6, scale=1.0,
                      scale_units="xy", angles="xy", width=0.004, zorder=4)
     time_txt = ax.text(0.02, 0.96, "", transform=ax.transAxes, color="white",
                        fontsize=14, va="top", family="monospace", fontweight="bold")
@@ -94,8 +97,10 @@ def main():
         for i, c in enumerate(circles):
             c.center = (x[i], y[i])
             c.set_color(C_POS if sig[i] > 0 else C_NEG)
+        speeds = np.hypot(vx_f, vy_f)
+        speeds = np.where(speeds > 0, speeds, 1.0)
         quiv.set_offsets(np.c_[x, y])
-        quiv.set_UVC(vx_f*a.arrow_len, vy_f*a.arrow_len)
+        quiv.set_UVC(vx_f / speeds * display_len, vy_f / speeds * display_len)
         time_txt.set_text(f"t = {t:.1f} s")
         return circles + [quiv, time_txt]
 
