@@ -160,11 +160,8 @@ def main():
                                    np.maximum(p_mean_ts - p_std_ts, 0),
                                    p_mean_ts + p_std_ts, alpha=0.2, color=nc)
 
-            # v vs P: all realizations as translucent lines → density via overlap
-            alpha_r = max(0.03, min(0.25, 2.0 / n_real))
-            for (_, v, p) in results:
-                ax_vp.plot(p, v, lw=0.4, alpha=alpha_r, color=nc)
-            ax_vp.plot(p_mean_ts, v_mean_ts, lw=1.8, color=nc, label=label)
+            # v vs P: mean trajectory
+            ax_vp.plot(p_mean_ts, v_mean_ts, lw=1.8, color=nc, label=label, alpha=0.85)
 
         for ax in axes_t:
             ax.legend(fontsize=11)
