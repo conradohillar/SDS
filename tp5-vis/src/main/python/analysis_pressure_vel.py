@@ -123,6 +123,7 @@ def main():
         axes_t[1].set_ylabel("P [cm/s / cm]", fontsize=12)
         axes_t[1].set_xlabel("t [s]", fontsize=12)
         axes_t[0].set_title(f"TP5 – {mode}: v̄(t) y P(t)", fontsize=13)
+        axes_t[0].set_yscale("log")
         axes_t[0].axhline(V0, ls=":", color="#7f8c8d", lw=1.5, label=f"v₀ = {V0}")
 
         fig_vp, ax_vp = plt.subplots(figsize=(7, 6))
