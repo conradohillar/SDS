@@ -77,7 +77,8 @@ public class ActiveRunner {
                         Path outDir = Paths.get(binF, "runs", mF, "N"+nF, "r"+rF);
                         try {
                             System.out.printf("  START %-7s N=%2d r=%d%n", mF, nF, rF);
-                            TimeDrivenActive.run(nF, rF, mF, dtF, tfF, dt2F, noFr, outDir);
+                            long seed = ThreadLocalRandom.current().nextLong();
+                            TimeDrivenActive.run(nF, seed, mF, dtF, tfF, dt2F, noFr, outDir);
                             System.out.printf("  DONE  %-7s N=%2d r=%d%n", mF, nF, rF);
                         } catch (Exception e) {
                             System.err.printf("  ERROR %-7s N=%2d r=%d: %s%n",
