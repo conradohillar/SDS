@@ -100,8 +100,8 @@ def main():
     ap.add_argument("--bin-dir",         default=None)
     ap.add_argument("--stat-frac",       type=float, default=0.5,
                     help="Fraction of simulation tail used for stationary stats")
-    ap.add_argument("--representative-n", nargs=2, type=int, default=None,
-                    help="Two N values used for time-series and v-vs-P plots (default: min/max)")
+    ap.add_argument("--representative-n", nargs="+", type=int, default=None,
+                    help="N values used for time-series and v-vs-P plots (default: min/max)")
     ap.add_argument("--n-runs",          type=int, default=5)
     a = ap.parse_args()
 
@@ -130,8 +130,8 @@ def main():
         ax_vp.set_ylabel("v̄ [cm/s]", fontsize=12)
         ax_vp.set_title(f"TP5 – {mode}: v̄ vs P", fontsize=13)
 
-        lw_list = [2.0, 1.5]
-        ls_list = ["-", "--"]
+        lw_list = [2.0, 1.8, 1.5, 1.2, 1.0]
+        ls_list = ["-", "--", "-.", ":", (0, (3, 1, 1, 1))]
         for idx_n, (n_val, lw, ls) in enumerate(zip(rep_n, lw_list, ls_list)):
             results = load_mode_n(bin_root, mode, n_val, a.n_runs)
             if not results:
