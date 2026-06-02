@@ -38,3 +38,43 @@ D22) El subindice "u" del titulo quedó mal.
 D27) La fuente queda muy pequeña con esta configuracion. Aprovechando que el eje X es el mismo en todas y que el margen de valores del eje Y era comparable quizas se podria haber presentado los tres graficos en uno solo y que se pueda ver bien.
 D29)Las conclusiones no deben tener titulo ni estar tan redactadas. Deben ser un punteo de los resultados mas importantes presentados.
  
+
+ TP4:
+ #3
+
+· excelente las comparaciones con las O(dts). hay un detalle que no termina de quedarme claro. el error que uds ponen en el eje y es x^2? entonces la comparacion tendria que ser con las O(dts)^2??
+
+
+#5
+
+· (IMPORTANTE) el obstaculo, paredes es parte del sistema particular. no del modelo de dinamica molecular
+
+
+#7
+
+· (IMPORTANTE) la energia no es parte del sistema. no son ecuaciones que sirvan para simular el sistema. son un observable, se definen en la seccion de simulaciones
+
+
+#13
+
+· (IMPORTANTE) cuando pasan a ser usadas?
+
+
+#19
+
+· la idea era que muestren para distintos dts, asi se puede observar cual es el dt mas grande que funciona bien
+
+
+#21
+
+· (IMPORTANTE) J tiene unidades!
+
+
+#23-25
+
+· por que una colorbar para mostrar la leyenda de N? N es una variable discreta, no?
+
+
+#28
+
+· esto no me lo esperaba
