@@ -31,12 +31,12 @@ R_P="${R_P:-1.6}"           # radio de particula [cm]
 R_DOMAIN="${R_DOMAIN:-10.0}" # radio del recinto [cm]
 V0="${V0:-0.825}"           # velocidad propulsion [cm/s]
 KAPPA="${KAPPA:-50.0}"      # constante elastica de contacto
-SIGMA_ETA="${SIGMA_ETA:-0.05}" # desviacion ruido angular
+SIGMA_ETA="${SIGMA_ETA:-3}"    # desviacion ruido angular
 
 # ─── Parametros de simulacion (grilla) ───────────────────────────────────────
 N_VALUES="${N_VALUES:-20,21,22,23,24,25,26,27}"   # lista CSV de N
 MODES="${MODES:-quiral,random}"                   # subset de {quiral,random}
-RUNS="${RUNS:-5}"                                 # realizaciones por (mode,N)
+RUNS="${RUNS:-20}"                                # realizaciones por (mode,N)
 TF="${TF:-10000.0}"                               # tiempo final [s]
 DT="${DT:-0.01}"                                  # paso RK4 [s]
 DT2="${DT2:-0.1}"                                 # intervalo de output [s]
@@ -56,7 +56,7 @@ SYNC_PLOTS="${SYNC_PLOTS:-1}"
 
 # ─── Rutas locales ───────────────────────────────────────────────────────────
 LOCAL_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LOCAL_PLOTS_DIR="$LOCAL_REPO/tp5-bin/images"
+LOCAL_PLOTS_DIR="${LOCAL_PLOTS_DIR:-$LOCAL_REPO/tp5-bin/images}"
 REMOTE_BIN="$REMOTE_REPO/tp5-bin"
 
 # normaliza listas CSV quitando espacios para que el shell no las parta

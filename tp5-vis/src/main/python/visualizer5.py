@@ -117,10 +117,8 @@ def animate(run_dir, speed, arrow_len, skip_time=0.0):
         for i, c in enumerate(circles):
             c.center = (x[i], y[i])
             c.set_color(C_POS if sig[i] > 0 else C_NEG)
-        speeds = np.hypot(vx_f, vy_f)
-        speeds = np.where(speeds > 0, speeds, 1.0)
         quiv.set_offsets(np.c_[x, y])
-        quiv.set_UVC(vx_f / speeds * display_len, vy_f / speeds * display_len)
+        quiv.set_UVC(np.cos(alp) * display_len, np.sin(alp) * display_len)
         time_txt.set_text(f"t = {t:.1f} s")
         return circles + [quiv, time_txt]
 
