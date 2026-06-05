@@ -87,44 +87,48 @@ def main():
     print(f"N values: {N_ALL}  |  v0 = {V0}")
     print(f"Jamming threshold: {threshold:.4f} cm/s  ({a.threshold*100:.0f}% of v0={V0})")
 
-    # ── Plot jam fraction vs N for each mode (shared axes) ────────────────────
-    fig, ax = plt.subplots(figsize=(8, 5))
-    ax.set_xlabel("N", fontsize=12)
-    ax.set_ylabel("Fracción tiempo atascado", fontsize=12)
-    ax.set_title(f"TP5 – Fracción de tiempo atascado vs N\n(umbral = {a.threshold*100:.0f}% v₀)", fontsize=13)
-    ax.set_ylim(-0.05, 1.05)
-
-    for mode, col, marker in zip(MODES, COLORS, ["o", "s"]):
-        ns, fj_mean, fj_std = [], [], []
-        for n_val in N_ALL:
-            fracs = []
-            for r in range(a.n_runs):
-                stats_path = os.path.join(bin_root, "runs", mode, f"N{n_val}", f"r{r}", "stats.txt")
-                if not os.path.exists(stats_path):
+    def plot_jam_fraction(thresh_frac, suffix=""):
+        thr = thresh_frac * V0
+        fig, ax = plt.subplots(figsize=(8, 5))
+        ax.set_xlabel("N", fontsize=12)
+        ax.set_ylabel("Fracción tiempo atascado", fontsize=12)
+        ax.set_title(f"TP5 – Fracción de tiempo atascado vs N\n(umbral = {thresh_frac*100:.0f}% v₀ = {thr:.4f} cm/s)", fontsize=13)
+        ax.set_ylim(-0.05, 1.05)
+        for mode, col, marker in zip(MODES, COLORS, ["o", "s"]):
+            ns, fj_mean, fj_std = [], [], []
+            for n_val in N_ALL:
+                fracs = []
+                for r in range(a.n_runs):
+                    stats_path = os.path.join(bin_root, "runs", mode, f"N{n_val}", f"r{r}", "stats.txt")
+                    if not os.path.exists(stats_path):
+                        continue
+                    try:
+                        t, v, _ = load_stats(stats_path)
+                        cutoff = int(len(v) * a.stat_frac)
+                        fracs.append(jam_fraction(v[cutoff:], thr))
+                    except Exception as e:
+                        print(f"  Warning {stats_path}: {e}")
+                if not fracs:
                     continue
-                try:
-                    t, v, _ = load_stats(stats_path)
-                    cutoff = int(len(v) * a.stat_frac)
-                    fracs.append(jam_fraction(v[cutoff:], threshold))
-                except Exception as e:
-                    print(f"  Warning {stats_path}: {e}")
-            if not fracs:
+                ns.append(n_val)
+                fj_mean.append(float(np.mean(fracs)))
+                fj_std.append(float(np.std(fracs, ddof=1)) if len(fracs) > 1 else 0.0)
+            if not ns:
                 continue
-            ns.append(n_val)
-            fj_mean.append(float(np.mean(fracs)))
-            fj_std.append(float(np.std(fracs, ddof=1)) if len(fracs) > 1 else 0.0)
-        if not ns:
-            continue
-        ax.errorbar(np.array(ns), fj_mean, yerr=fj_std,
-                    fmt=f"{marker}-", color=col, lw=2,
-                    capsize=5, elinewidth=1.5, label=mode)
+            ax.errorbar(np.array(ns), fj_mean, yerr=fj_std,
+                        fmt=f"{marker}-", color=col, lw=2,
+                        capsize=5, elinewidth=1.5, label=mode)
+        ax.legend(fontsize=11); ax.grid(True, ls="--", alpha=0.4)
+        plt.tight_layout()
+        fname = f"tp5_jam_fraction_vs_N{suffix}.png"
+        out = os.path.join(img_dir, fname)
+        fig.savefig(out, dpi=150)
+        plt.close(fig)
+        print(f"Saved → {out}")
 
-    ax.legend(fontsize=11); ax.grid(True, ls="--", alpha=0.4)
-    plt.tight_layout()
-    out = os.path.join(img_dir, "tp5_jam_fraction_vs_N.png")
-    fig.savefig(out, dpi=150)
-    plt.close(fig)
-    print(f"Saved → {out}")
+    # ── Plot jam fraction vs N: umbral configurado + 5/10/15/20% ─────────────
+    for pct in [0.05, 0.10, 0.15, 0.20]:
+        plot_jam_fraction(pct, suffix=f"_{int(pct*100)}pct")
 
     # ── Per-mode: v̄(t) para N=20 y N=27, realización r=0 ────────────────────
     REP_N  = [min(N_ALL), max(N_ALL)]
