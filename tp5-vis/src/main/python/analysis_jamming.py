@@ -126,30 +126,25 @@ def main():
     plt.close(fig)
     print(f"Saved → {out}")
 
-    # ── Per-mode: v_mean(t) for all N colored by N (shows jammed dips) ────────
-    for mode, col in zip(MODES, COLORS):
-        cmap   = plt.cm.plasma
-        colors = cmap(np.linspace(0.1, 0.9, len(N_ALL)))
+    # ── Per-mode: v̄(t) para N=20 y N=27, realización r=0 ────────────────────
+    REP_N  = [min(N_ALL), max(N_ALL)]
+    N_COLS = ["#e74c3c", "#2ecc71"]
+    for mode in MODES:
         fig2, ax2 = plt.subplots(figsize=(10, 5))
         ax2.set_xlabel("t [s]", fontsize=12)
         ax2.set_ylabel("v̄ [cm/s]", fontsize=12)
-        ax2.set_yscale("log")
-        ax2.set_title(f"TP5 – {mode}: v̄(t) para todos los N", fontsize=13)
+        ax2.set_title(f"TP5 – {mode}: v̄(t)  N=20 y N=27 (r=0)", fontsize=13)
         ax2.axhline(threshold, ls=":", color="#7f8c8d", lw=1.5,
                     label=f"umbral = {threshold:.3f} cm/s")
-        sm = plt.cm.ScalarMappable(cmap="plasma",
-                                   norm=plt.Normalize(vmin=min(N_ALL), vmax=max(N_ALL)))
-        sm.set_array([])
-        for n_val, c in zip(N_ALL, colors):
+        for n_val, c in zip(REP_N, N_COLS):
             stats_path = os.path.join(bin_root, "runs", mode, f"N{n_val}", "r0", "stats.txt")
             if not os.path.exists(stats_path):
                 continue
             try:
                 t, v, _ = load_stats(stats_path)
-                ax2.plot(t, v, color=c, lw=0.8, alpha=0.85)
+                ax2.plot(t, v, color=c, lw=0.9, alpha=0.9, label=f"N = {n_val}")
             except Exception:
                 pass
-        fig2.colorbar(sm, ax=ax2, label="N")
         ax2.legend(fontsize=10); ax2.grid(True, ls="--", alpha=0.3)
         plt.tight_layout()
         out2 = os.path.join(img_dir, f"tp5_{mode}_v_all_N.png")
