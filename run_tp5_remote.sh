@@ -36,7 +36,7 @@ SIGMA_ETA="${SIGMA_ETA:-3}"    # desviacion ruido angular
 # ─── Parametros de simulacion (grilla) ───────────────────────────────────────
 N_VALUES="${N_VALUES:-20,21,22,23,24,25,26,27}"   # lista CSV de N
 MODES="${MODES:-quiral,random}"                   # subset de {quiral,random}
-RUNS="${RUNS:-20}"                                # realizaciones por (mode,N)
+RUNS="${RUNS:-50}"                                # realizaciones por (mode,N)
 TF="${TF:-10000.0}"                               # tiempo final [s]
 DT="${DT:-0.01}"                                  # paso RK4 [s]
 DT2="${DT2:-0.1}"                                 # intervalo de output [s]

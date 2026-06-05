@@ -76,6 +76,10 @@ public class ActiveRunner {
                     futures.add(pool.submit(() -> {
                         Path outDir = Paths.get(binF, "runs", mF, "N"+nF, "r"+rF);
                         try {
+                            if (Files.exists(outDir.resolve("stats.txt"))) {
+                                System.out.printf("  SKIP  %-7s N=%2d r=%d (exists)%n", mF, nF, rF);
+                                return null;
+                            }
                             System.out.printf("  START %-7s N=%2d r=%d%n", mF, nF, rF);
                             long seed = ThreadLocalRandom.current().nextLong();
                             TimeDrivenActive.run(nF, seed, mF, dtF, tfF, dt2F, noFr, outDir);
