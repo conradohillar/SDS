@@ -31,7 +31,7 @@ R_P="${R_P:-1.6}"           # radio de particula [cm]
 R_DOMAIN="${R_DOMAIN:-10.0}" # radio del recinto [cm]
 V0="${V0:-0.825}"           # velocidad propulsion [cm/s]
 KAPPA="${KAPPA:-50.0}"      # constante elastica de contacto
-SIGMA_ETA="${SIGMA_ETA:-3}"    # desviacion ruido angular
+SIGMA_ETA="${SIGMA_ETA:-0.0825}" # desviacion ruido angular
 
 # ─── Parametros de simulacion (grilla) ───────────────────────────────────────
 N_VALUES="${N_VALUES:-20,21,22,23,24,25,26,27}"   # lista CSV de N
