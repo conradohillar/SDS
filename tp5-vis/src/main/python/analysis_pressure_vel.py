@@ -20,6 +20,7 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 
 MODES   = ["quiral", "random"]
 COLORS  = ["#e74c3c", "#3498db"]   # quiral=red, random=blue
@@ -216,6 +217,41 @@ def main():
         ax.figure.savefig(out, dpi=150)
         print(f"Saved → {out}")
     plt.close("all")
+
+    # ── 5: v̄_stat vs P_stat para todos los N (ambos modos) ───────────────────
+    fig_vp_all, ax_vp_all = plt.subplots(figsize=(8, 6))
+    ax_vp_all.set_xlabel("P_stat [dina/cm]", fontsize=12)
+    ax_vp_all.set_ylabel("v̄_stat [cm/s]", fontsize=12)
+    ax_vp_all.set_title("TP5 – v̄ estacionaria vs P estacionaria (todos los N)", fontsize=13)
+
+    for mode, col, marker in zip(MODES, COLORS, ["o", "s"]):
+        pts_p, pts_v, pts_n = [], [], []
+        for n_val in N_ALL:
+            results = load_mode_n(bin_root, mode, n_val, a.n_runs)
+            if not results:
+                continue
+            vm, vs, pm, ps = stationary_stats(results, a.stat_frac)
+            if vm is None:
+                continue
+            pts_p.append(pm); pts_v.append(vm); pts_n.append(n_val)
+        if not pts_p:
+            continue
+        ax_vp_all.plot(pts_p, pts_v, color=col, lw=1.5, alpha=0.5)
+        ax_vp_all.scatter(pts_p, pts_v, color=col, marker=marker, s=80, zorder=5)
+        for p, v, n_val in zip(pts_p, pts_v, pts_n):
+            ax_vp_all.annotate(str(n_val), (p, v), textcoords="offset points",
+                               xytext=(5, 4), fontsize=9, color=col)
+
+    ax_vp_all.legend(handles=[
+        mpatches.Patch(color=COLORS[0], label="quiral"),
+        mpatches.Patch(color=COLORS[1], label="random"),
+    ], fontsize=11)
+    ax_vp_all.grid(True, ls="--", alpha=0.4)
+    plt.tight_layout()
+    out = os.path.join(img_dir, "tp5_v_stat_vs_P_stat_allN.png")
+    fig_vp_all.savefig(out, dpi=150)
+    plt.close(fig_vp_all)
+    print(f"Saved → {out}")
 
 
 if __name__ == "__main__":
