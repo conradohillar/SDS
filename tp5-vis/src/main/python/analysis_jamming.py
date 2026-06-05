@@ -130,14 +130,15 @@ def main():
     for pct in [0.05, 0.10, 0.15, 0.20]:
         plot_jam_fraction(pct, suffix=f"_{int(pct*100)}pct")
 
-    # ── Per-mode: v̄(t) para N=20 y N=27, realización r=0 ────────────────────
+    # ── Per-mode: v̄(t) para N=20 y N=27, realización r=0, t∈[2000,3000] ─────
     REP_N  = [min(N_ALL), max(N_ALL)]
     N_COLS = ["#e74c3c", "#2ecc71"]
+    T_MIN, T_MAX = 2000.0, 30000.0
     for mode in MODES:
         fig2, ax2 = plt.subplots(figsize=(10, 5))
         ax2.set_xlabel("t [s]", fontsize=12)
         ax2.set_ylabel("v̄ [cm/s]", fontsize=12)
-        ax2.set_title(f"TP5 – {mode}: v̄(t)  N=20 y N=27 (r=0)", fontsize=13)
+        ax2.set_title(f"TP5 – {mode}: v̄(t)  N=20 y N=27 (r=0, t ≥ {int(T_MIN)} s)", fontsize=13)
         ax2.axhline(threshold, ls=":", color="#7f8c8d", lw=1.5,
                     label=f"umbral = {threshold:.3f} cm/s")
         for n_val, c in zip(REP_N, N_COLS):
@@ -146,7 +147,8 @@ def main():
                 continue
             try:
                 t, v, _ = load_stats(stats_path)
-                ax2.plot(t, v, color=c, lw=0.9, alpha=0.9, label=f"N = {n_val}")
+                mask = (t >= T_MIN) & (t <= T_MAX)
+                ax2.plot(t[mask], v[mask], color=c, lw=0.9, alpha=0.9, label=f"N = {n_val}")
             except Exception:
                 pass
         ax2.legend(fontsize=10); ax2.grid(True, ls="--", alpha=0.3)
