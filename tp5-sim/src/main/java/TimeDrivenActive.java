@@ -37,11 +37,11 @@ import java.util.*;
 public class TimeDrivenActive {
 
     // ── Physical parameters (mutable, set before constructing the simulation) ─
-    static double R_P       = 1.6;
+    static double R_P       = 1.65;
     static double R_DOMAIN  = 10.0;
     static double V0        = 0.825;
     static double KAPPA     = 50.0;
-    static double SIGMA_ETA = 0.05;
+    static double SIGMA_ETA = 0.085;
     // Derived – recomputed by refreshDerived() whenever R_P or R_DOMAIN change.
     static double SIGMA_PP  = 2.0 * R_P;
     static double R_EFF     = R_DOMAIN - R_P;
@@ -184,14 +184,13 @@ public class TimeDrivenActive {
             dxOut[i] = V0*Math.cos(alphas[i]) + fxArg[i];
             dyOut[i] = V0*Math.sin(alphas[i]) + fyArg[i];
             double vi = Math.sqrt(dxOut[i]*dxOut[i] + dyOut[i]*dyOut[i]);
-            daOut[i] = sigma[i]*vi/R_P + eta[i];
+            daOut[i] = sigma[i]*vi/R_P;
         }
     }
 
     // ── RK4 step ──────────────────────────────────────────────────────────────
     void stepRK4(double dt) {
         double h2 = 0.5*dt, h6 = dt/6.0;
-        for (int i=0;i<n;i++) eta[i] = rng.nextGaussian()*SIGMA_ETA;
 
         computeForces(x,  y,  fx, fy);
         evalDerivs(x, y, alpha, fx, fy, k1x, k1y, k1a);
@@ -208,10 +207,13 @@ public class TimeDrivenActive {
         computeForces(xt, yt, fx, fy);
         evalDerivs(xt, yt, at, fx, fy, k4x, k4y, k4a);
 
+        // Deterministic RK4 update + Euler-Maruyama for stochastic noise (√dt scaling)
+        double sqrtDt = Math.sqrt(dt);
         for (int i=0;i<n;i++){
             x[i]     += h6*(k1x[i]+2*k2x[i]+2*k3x[i]+k4x[i]);
             y[i]     += h6*(k1y[i]+2*k2y[i]+2*k3y[i]+k4y[i]);
-            alpha[i] += h6*(k1a[i]+2*k2a[i]+2*k3a[i]+k4a[i]);
+            alpha[i] += h6*(k1a[i]+2*k2a[i]+2*k3a[i]+k4a[i])
+                      + sqrtDt * rng.nextGaussian() * SIGMA_ETA;
         }
     }
 
