@@ -185,7 +185,6 @@ def main():
     ax_sv.set_xlabel("N", fontsize=12); ax_sv.set_ylabel("v̄_stat [cm/s]", fontsize=12)
     ax_sp.set_xlabel("N", fontsize=12); ax_sp.set_ylabel("P_stat [cm/s / cm]", fontsize=12)
     ax_sv.set_title("TP5 – Velocidad promedio estacionaria vs N", fontsize=13)
-    ax_sv.set_yscale("log")
     ax_sp.set_title("TP5 – Presión estacionaria sobre la pared vs N", fontsize=13)
     for mode, col, marker in zip(MODES, COLORS, ["o", "s"]):
         ns, vm_arr, vs_arr, pm_arr, ps_arr = [], [], [], [], []
