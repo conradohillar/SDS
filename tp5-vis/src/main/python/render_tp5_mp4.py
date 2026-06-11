@@ -51,8 +51,8 @@ def main():
     ap.add_argument("--mode",       default="quiral", choices=["quiral","random"])
     ap.add_argument("--n",          type=int,   default=20)
     ap.add_argument("--r",          type=int,   default=0)
-    ap.add_argument("--fps",        type=int,   default=10,
-                    help="Output fps (default: 10)")
+    ap.add_argument("--fps",        type=int,   default=60,
+                    help="Output fps (default: 60)")
     ap.add_argument("--skip-time",  type=float, default=0.0)
     ap.add_argument("--arrow-len",  type=float, default=0.75,
                     help="Arrow length as fraction of R_P (default 0.75)")
@@ -75,11 +75,16 @@ def main():
         if fr[0] >= a.skip_time:
             frames.append(fr)
     dt2 = frames[1][0] - frames[0][0] if len(frames) > 1 else 0.1
-    fps = a.fps
-    print(f"Rendering {len(frames)} frames  N={N}  mode={mode}  dt2={dt2:.3f}s  fps={fps}")
+    fps  = a.fps
+    SPEED = 20
+    sim_dt_per_frame = SPEED / fps          # target sim-s per display frame
+    skip = max(1, round(sim_dt_per_frame / dt2))
+    frames = frames[::skip]
+    actual_speed = dt2 * skip * fps
+    print(f"Rendering {len(frames)} frames  N={N}  mode={mode}  dt2={dt2:.3f}s  skip={skip}  fps={fps}  x{actual_speed:.1f} speed")
 
     C_POS = "#e74c3c"; C_NEG = "#3498db"; C_WALL = "#ecf0f1"; C_BG = "#1a1a2e"
-    fig, ax = plt.subplots(figsize=(7, 7))
+    fig, ax = plt.subplots(figsize=(10, 10))
     ax.set_aspect("equal"); pad = 1.5
     ax.set_xlim(-R-pad, R+pad); ax.set_ylim(-R-pad, R+pad)
     ax.set_facecolor(C_BG); fig.patch.set_facecolor(C_BG); ax.axis("off")
@@ -93,7 +98,12 @@ def main():
                      scale_units="xy", angles="xy", width=0.004, zorder=4)
     time_txt = ax.text(0.02, 0.96, "", transform=ax.transAxes, color="white",
                        fontsize=14, va="top", family="monospace", fontweight="bold")
-    ax.set_title(f"TP5 Sistema 3 – {mode}  N={N}", color="white", pad=6, fontsize=13)
+    ax.legend(handles=[
+        mpatches.Patch(color=C_POS, label="σ = +1"),
+        mpatches.Patch(color=C_NEG, label="σ = −1"),
+    ], loc="upper right", bbox_to_anchor=(1.0, 1.0),
+       facecolor="#2c2c2c", edgecolor="none",
+       labelcolor="white", fontsize=13, handlelength=2, borderpad=0.8)
 
     def update(idx):
         t, x, y, vx_f, vy_f, alp, sig = frames[idx]
@@ -108,8 +118,8 @@ def main():
     ani = FuncAnimation(fig, update, frames=len(frames), blit=True)
     out = a.output or os.path.join(bin_root, "animations", f"tp5_{mode}_N{N}_r{a.r}.mp4")
     os.makedirs(os.path.dirname(out), exist_ok=True)
-    writer = FFMpegWriter(fps=fps, bitrate=2000)
-    ani.save(out, writer=writer, dpi=120)
+    writer = FFMpegWriter(fps=fps, bitrate=6000)
+    ani.save(out, writer=writer, dpi=180)
     plt.close(fig)
     print(f"Saved → {out}")
 

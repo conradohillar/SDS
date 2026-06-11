@@ -78,8 +78,14 @@ def animate(run_dir, arrow_len, skip_time=0.0):
     if not frames:
         print(f"No frames found in {frames_dir}"); return
     dt2 = frames[1][0] - frames[0][0] if len(frames) > 1 else 0.1
-    interval_ms = 100  # fixed 10 fps; animation speed = dt2 * 10 sim-s per real-s
-    print(f"Loaded {len(frames)} frames  (N={N}, mode={mode}, R={R}, dt2={dt2:.3f}s, {1000/interval_ms:.0f} fps)")
+    SPEED = 20
+    FPS   = 60
+    sim_dt_per_frame = SPEED / FPS          # 0.333 sim-s per display frame
+    skip = max(1, round(sim_dt_per_frame / dt2))
+    frames = frames[::skip]
+    interval_ms = round(1000 / FPS)         # 16 ms → 60 fps
+    actual_speed = dt2 * skip * FPS
+    print(f"Loaded {len(frames)} frames  (N={N}, mode={mode}, R={R}, dt2={dt2:.3f}s, skip={skip}, {FPS} fps, x{actual_speed:.1f} speed)")
 
     C_POS  = "#e74c3c"   # σ = +1 (quiral / CW)
     C_NEG  = "#3498db"   # σ = -1 (CCW)

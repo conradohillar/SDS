@@ -37,11 +37,11 @@ import java.util.*;
 public class TimeDrivenActive {
 
     // ── Physical parameters (mutable, set before constructing the simulation) ─
-    static double R_P       = 1.65;
-    static double R_DOMAIN  = 10.0;
-    static double V0        = 0.825;
+    static double R_P       = 16.5;
+    static double R_DOMAIN  = 100.0;
+    static double V0        = 8.25;
     static double KAPPA     = 50.0;
-    static double SIGMA_ETA = 0.085;
+    static double SIGMA_ETA = 0.0825;
     // Derived – recomputed by refreshDerived() whenever R_P or R_DOMAIN change.
     static double SIGMA_PP  = 2.0 * R_P;
     static double R_EFF     = R_DOMAIN - R_P;
