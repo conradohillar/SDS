@@ -68,20 +68,26 @@ def jam_fraction(v_series, threshold):
     return float(np.mean(v_series < threshold))
 
 
-def compute_kde_threshold(all_v, n_points=2000):
+def compute_kde_threshold(all_v, n_points=2000, bw=0.05):
     """
     Fit KDE to pooled velocity samples, find the valley between the two
     highest peaks (bimodal jamming threshold).
     Returns (threshold, x_grid, kde_values, peak_indices, valley_index).
     Returns (None, ...) if fewer than two peaks are found.
+    bw is expressed as a fraction of v0 (e.g. 0.05 * 0.825 ≈ 0.04 cm/s).
     """
     v = np.asarray(all_v)
     v = v[np.isfinite(v) & (v >= 0)]
-    kde = gaussian_kde(v, bw_method="scott")
+    if len(v) < 2:
+        return None, np.array([0.0, 1.0]), np.array([0.0, 0.0]), np.array([], dtype=int), None
+
+    # Fixed absolute bandwidth in cm/s units
+    bw_abs = bw * DEFAULT_V0
+    kde = gaussian_kde(v, bw_method=bw_abs / v.std(ddof=1) if v.std(ddof=1) > 0 else "scott")
     x = np.linspace(v.min(), v.max(), n_points)
     y = kde(x)
 
-    peaks, props = find_peaks(y, prominence=y.max() * 0.03)
+    peaks, props = find_peaks(y, prominence=y.max() * 0.01)
     if len(peaks) < 2:
         return None, x, y, peaks, None
 
@@ -106,6 +112,11 @@ def plot_kde_threshold(all_v_per_mode, thresholds, img_dir, v0):
     for ax, mode, col in zip(axes, modes, COLORS):
         v = np.asarray(all_v_per_mode[mode])
         v = v[np.isfinite(v) & (v >= 0)]
+        if len(v) < 2:
+            ax.text(0.5, 0.5, "sin datos bimodales", ha="center", va="center",
+                    transform=ax.transAxes, fontsize=12, color="gray")
+            ax.set_title(f"TP5 – {mode}: distribución de v̄(t)", fontsize=12)
+            continue
         thr, x, y, peaks, valley_idx = compute_kde_threshold(v)
 
         ax.fill_between(x, y, alpha=0.15, color=col)
