@@ -20,6 +20,8 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from scipy.stats import gaussian_kde
+from scipy.signal import find_peaks
 
 MODES  = ["quiral", "random"]
 COLORS = ["#e74c3c", "#3498db"]
@@ -66,6 +68,70 @@ def jam_fraction(v_series, threshold):
     return float(np.mean(v_series < threshold))
 
 
+def compute_kde_threshold(all_v, n_points=2000):
+    """
+    Fit KDE to pooled velocity samples, find the valley between the two
+    highest peaks (bimodal jamming threshold).
+    Returns (threshold, x_grid, kde_values, peak_indices, valley_index).
+    Returns (None, ...) if fewer than two peaks are found.
+    """
+    v = np.asarray(all_v)
+    v = v[np.isfinite(v) & (v >= 0)]
+    kde = gaussian_kde(v, bw_method="scott")
+    x = np.linspace(v.min(), v.max(), n_points)
+    y = kde(x)
+
+    peaks, props = find_peaks(y, prominence=y.max() * 0.03)
+    if len(peaks) < 2:
+        return None, x, y, peaks, None
+
+    # Two most prominent peaks
+    top2 = peaks[np.argsort(props["prominences"])[-2:]]
+    left, right = sorted(top2)
+
+    valley_local = np.argmin(y[left : right + 1])
+    valley_idx = left + valley_local
+    return float(x[valley_idx]), x, y, peaks, valley_idx
+
+
+def plot_kde_threshold(all_v_per_mode, thresholds, img_dir, v0):
+    """
+    One subplot per mode: KDE curve with peaks and valley/threshold annotated.
+    """
+    modes = list(all_v_per_mode.keys())
+    fig, axes = plt.subplots(1, len(modes), figsize=(7 * len(modes), 5))
+    if len(modes) == 1:
+        axes = [axes]
+
+    for ax, mode, col in zip(axes, modes, COLORS):
+        v = np.asarray(all_v_per_mode[mode])
+        v = v[np.isfinite(v) & (v >= 0)]
+        thr, x, y, peaks, valley_idx = compute_kde_threshold(v)
+
+        ax.fill_between(x, y, alpha=0.15, color=col)
+        ax.plot(x, y, color=col, lw=2, label="KDE")
+        ax.plot(x[peaks], y[peaks], "^", color="black", ms=8, label="picos")
+
+        if valley_idx is not None:
+            ax.axvline(x[valley_idx], color="#e67e22", lw=2, ls="--",
+                       label=f"umbral KDE = {x[valley_idx]:.4f} cm/s\n"
+                             f"({x[valley_idx]/v0*100:.1f}% v₀)")
+
+        ax.set_xlabel("v̄ [cm/s]", fontsize=12)
+        ax.set_ylabel("Densidad", fontsize=12)
+        ax.set_title(f"TP5 – {mode}: distribución de v̄(t)\n(todas las N, todas las corridas, estado estacionario)",
+                     fontsize=12)
+        ax.legend(fontsize=10)
+        ax.grid(True, ls="--", alpha=0.35)
+
+    plt.tight_layout()
+    out = os.path.join(img_dir, "tp5_kde_threshold.png")
+    fig.savefig(out, dpi=150)
+    plt.close(fig)
+    print(f"Saved → {out}")
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--bin-dir",   default=None)
@@ -86,6 +152,37 @@ def main():
     threshold  = a.threshold * V0
     print(f"N values: {N_ALL}  |  v0 = {V0}")
     print(f"Jamming threshold: {threshold:.4f} cm/s  ({a.threshold*100:.0f}% of v0={V0})")
+
+    # ── KDE-based threshold detection ────────────────────────────────────────
+    all_v_per_mode = {mode: [] for mode in MODES}
+    for mode in MODES:
+        for n_val in N_ALL:
+            for r in range(a.n_runs):
+                stats_path = os.path.join(bin_root, "runs", mode, f"N{n_val}", f"r{r}", "stats.txt")
+                if not os.path.exists(stats_path):
+                    continue
+                try:
+                    t, v, _ = load_stats(stats_path)
+                    cutoff = int(len(v) * a.stat_frac)
+                    all_v_per_mode[mode].extend(v[cutoff:].tolist())
+                except Exception:
+                    pass
+
+    kde_thresholds = {}
+    print("\n── KDE threshold detection ──")
+    for mode in MODES:
+        v_pool = all_v_per_mode[mode]
+        if not v_pool:
+            print(f"  {mode}: no data"); continue
+        thr, x, y, peaks, valley_idx = compute_kde_threshold(v_pool)
+        if thr is None:
+            print(f"  {mode}: bimodal distribution not found (< 2 peaks)")
+        else:
+            print(f"  {mode}: umbral KDE = {thr:.4f} cm/s  ({thr/V0*100:.1f}% v₀)")
+            kde_thresholds[mode] = thr
+
+    plot_kde_threshold(all_v_per_mode, kde_thresholds, img_dir, V0)
+    print()
 
     def plot_jam_fraction(thresh_frac, suffix=""):
         thr = thresh_frac * V0
