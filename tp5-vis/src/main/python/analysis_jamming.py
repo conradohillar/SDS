@@ -153,10 +153,12 @@ def main():
     print(f"N values: {N_ALL}  |  v0 = {V0}")
     print(f"Jamming threshold: {threshold:.4f} cm/s  ({a.threshold*100:.0f}% of v0={V0})")
 
-    # ── KDE-based threshold detection ────────────────────────────────────────
-    all_v_per_mode = {mode: [] for mode in MODES}
+    # ── KDE-based threshold detection (per-N, most bimodal) ──────────────────
+    # Load all steady-state v values per (mode, N)
+    v_per_mode_n = {mode: {} for mode in MODES}
     for mode in MODES:
         for n_val in N_ALL:
+            samples = []
             for r in range(a.n_runs):
                 stats_path = os.path.join(bin_root, "runs", mode, f"N{n_val}", f"r{r}", "stats.txt")
                 if not os.path.exists(stats_path):
@@ -164,23 +166,46 @@ def main():
                 try:
                     t, v, _ = load_stats(stats_path)
                     cutoff = int(len(v) * a.stat_frac)
-                    all_v_per_mode[mode].extend(v[cutoff:].tolist())
+                    samples.extend(v[cutoff:].tolist())
                 except Exception:
                     pass
+            if samples:
+                v_per_mode_n[mode][n_val] = samples
+
+    def valley_depth(thr, x, y, valley_idx, peaks):
+        """Ratio: how deep is the valley relative to the lower of the two flanking peaks."""
+        if valley_idx is None or len(peaks) < 2:
+            return 0.0
+        top2 = peaks[np.argsort(y[peaks])[-2:]]
+        left, right = sorted(top2)
+        peak_min = min(y[left], y[right])
+        return 1.0 - y[valley_idx] / peak_min if peak_min > 0 else 0.0
 
     kde_thresholds = {}
-    print("\n── KDE threshold detection ──")
+    best_n_per_mode = {}
+    print("\n── KDE threshold detection (most bimodal N per mode) ──")
     for mode in MODES:
-        v_pool = all_v_per_mode[mode]
-        if not v_pool:
-            print(f"  {mode}: no data"); continue
-        thr, x, y, peaks, valley_idx = compute_kde_threshold(v_pool)
-        if thr is None:
-            print(f"  {mode}: bimodal distribution not found (< 2 peaks)")
+        best_depth, best_thr, best_n = -1.0, None, None
+        for n_val, samples in v_per_mode_n[mode].items():
+            thr, x, y, peaks, valley_idx = compute_kde_threshold(samples)
+            if thr is None:
+                continue
+            depth = valley_depth(thr, x, y, valley_idx, peaks)
+            if depth > best_depth:
+                best_depth, best_thr, best_n = depth, thr, n_val
+        if best_thr is None:
+            print(f"  {mode}: bimodal distribution not found for any N")
         else:
-            print(f"  {mode}: umbral KDE = {thr:.4f} cm/s  ({thr/V0*100:.1f}% v₀)")
-            kde_thresholds[mode] = thr
+            print(f"  {mode}: N={best_n}  umbral KDE = {best_thr:.4f} cm/s  "
+                  f"({best_thr/V0*100:.1f}% v₀)  valley_depth={best_depth:.2f}")
+            kde_thresholds[mode] = best_thr
+            best_n_per_mode[mode] = best_n
 
+    # Build per-mode pool using only the most-bimodal N
+    all_v_per_mode = {
+        mode: v_per_mode_n[mode].get(best_n_per_mode.get(mode), [])
+        for mode in MODES
+    }
     plot_kde_threshold(all_v_per_mode, kde_thresholds, img_dir, V0)
     print()
 
