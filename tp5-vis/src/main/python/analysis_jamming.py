@@ -110,7 +110,7 @@ def plot_kde_threshold(all_v_pooled, threshold, img_dir, v0):
 
     fig, ax = plt.subplots(figsize=(8, 5))
 
-    ax.hist(v, bins=200, weights=np.ones(len(v)) / len(v), color="#aec6e8", alpha=0.8,
+    ax.hist(v, bins=200, weights=np.ones(len(v)) / len(v) * 100, color="#aec6e8", alpha=0.8,
             label="datos (todos los N, ambos modos)")
 
     if threshold is not None:
@@ -118,7 +118,7 @@ def plot_kde_threshold(all_v_pooled, threshold, img_dir, v0):
                    label=f"umbral = {threshold:.2f} cm/s ({threshold/v0:.2f}·v₀)")
 
     ax.set_xlabel("v̄ [cm/s]", fontsize=12)
-    ax.set_ylabel("fracción de tiempo", fontsize=12)
+    ax.set_ylabel("fracción de tiempo [%]", fontsize=12)
     ax.set_title("TP5 – distribución de v̄(t)\n(todos los N, ambos modos, estado estacionario)", fontsize=12)
     ax.set_xlim(left=0)
     ax.legend(fontsize=10)
@@ -169,14 +169,14 @@ def main():
                     pass
 
     print("\n── KDE threshold detection (all N, both modes pooled) ──")
-    kde_threshold = None
+    kde_threshold = 0.195  # valley of bimodal distribution (cm/s)
     if all_v_pooled:
         thr, x, y, peaks, valley_idx = compute_kde_threshold(all_v_pooled)
         if thr is None:
             print("  bimodal distribution not found (< 2 peaks)")
         else:
             print(f"  umbral KDE = {thr:.4f} cm/s  ({thr/V0*100:.1f}% v₀)")
-            kde_threshold = thr
+    print(f"  umbral fijado = {kde_threshold:.4f} cm/s  ({kde_threshold/V0*100:.1f}% v₀)")
 
     plot_kde_threshold(all_v_pooled, kde_threshold, img_dir, V0)
     print()
