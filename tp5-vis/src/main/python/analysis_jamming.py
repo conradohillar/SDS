@@ -110,15 +110,9 @@ def plot_kde_threshold(all_v_pooled, threshold, img_dir, v0):
 
     fig, ax = plt.subplots(figsize=(8, 5))
 
-    # Histogram (density=True so it matches KDE scale)
-    ax.hist(v, bins=200, density=True, color="#aec6e8", alpha=0.6,
+    ax.hist(v, bins=200, density=True, color="#aec6e8", alpha=0.8,
             label="datos (todos los N, ambos modos)")
 
-    # KDE
-    thr, x, y, peaks, valley_idx = compute_kde_threshold(v)
-    ax.plot(x, y, color="#1a237e", lw=2, label="KDE")
-
-    # Threshold line
     if threshold is not None:
         ax.axvline(threshold, color="black", lw=2, ls="--",
                    label=f"umbral = {threshold:.2f} cm/s ({threshold/v0:.2f}·v₀)")
@@ -230,10 +224,6 @@ def main():
     if kde_threshold is not None:
         kde_frac = kde_threshold / V0
         plot_jam_fraction(kde_frac, suffix="_kde")
-
-    # ── Plot jam fraction vs N: umbral configurado + 5/10/15/20% ─────────────
-    for pct in [0.05, 0.10, 0.15, 0.20]:
-        plot_jam_fraction(pct, suffix=f"_{int(pct*100)}pct")
 
     # ── Per-mode: v̄(t) para N=20 y N=27, realización r=0, t∈[2000,3000] ─────
     REP_N  = [min(N_ALL), max(N_ALL)]
