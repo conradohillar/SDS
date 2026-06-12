@@ -234,8 +234,6 @@ def main():
         ax2.set_xlabel("t [s]", fontsize=12)
         ax2.set_ylabel("v̄ [cm/s]", fontsize=12)
         ax2.set_title(f"TP5 – {mode}: v̄(t)  N=20 y N=27 (r=0, t∈[{int(T_MIN)}, {int(T_MAX)}] s)", fontsize=13)
-        ax2.axhline(threshold, ls=":", color="#7f8c8d", lw=1.5,
-                    label=f"umbral = {threshold:.3f} cm/s")
         for n_val, c in zip(REP_N, N_COLS):
             stats_path = os.path.join(bin_root, "runs", mode, f"N{n_val}", "r0", "stats.txt")
             if not os.path.exists(stats_path):
