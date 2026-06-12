@@ -122,15 +122,6 @@ def plot_kde_threshold(all_v_pooled, threshold, img_dir, v0):
     if threshold is not None:
         ax.axvline(threshold, color="black", lw=2, ls="--",
                    label=f"umbral = {threshold:.2f} cm/s ({threshold/v0:.2f}·v₀)")
-        # Region labels
-        y_top = ax.get_ylim()[1] if ax.get_ylim()[1] > 0 else y.max() * 1.1
-        ax.text(threshold * 0.45, y.max() * 0.85, "atascado",
-                color="#c0392b", fontsize=13, fontweight="bold", ha="center")
-        ax.text((threshold + v0) / 2, y.max() * 0.5, "fluido",
-                color="#27ae60", fontsize=13, fontweight="bold", ha="center")
-
-    # v0 reference
-    ax.axvline(v0, color="gray", lw=1.2, ls=":", label=f"v₀ = {v0} cm/s")
 
     ax.set_xlabel("v̄ [cm/s]", fontsize=12)
     ax.set_ylabel("densidad", fontsize=12)
@@ -234,6 +225,11 @@ def main():
         fig.savefig(out, dpi=150)
         plt.close(fig)
         print(f"Saved → {out}")
+
+    # ── Plot jam fraction vs N con umbral KDE ────────────────────────────────
+    if kde_threshold is not None:
+        kde_frac = kde_threshold / V0
+        plot_jam_fraction(kde_frac, suffix="_kde")
 
     # ── Plot jam fraction vs N: umbral configurado + 5/10/15/20% ─────────────
     for pct in [0.05, 0.10, 0.15, 0.20]:
