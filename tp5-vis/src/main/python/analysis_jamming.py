@@ -110,7 +110,7 @@ def plot_kde_threshold(all_v_pooled, threshold, img_dir, v0):
 
     fig, ax = plt.subplots(figsize=(8, 5))
 
-    ax.hist(v, bins=200, density=True, color="#aec6e8", alpha=0.8,
+    ax.hist(v, bins=200, weights=np.ones(len(v)) / len(v), color="#aec6e8", alpha=0.8,
             label="datos (todos los N, ambos modos)")
 
     if threshold is not None:
@@ -118,7 +118,7 @@ def plot_kde_threshold(all_v_pooled, threshold, img_dir, v0):
                    label=f"umbral = {threshold:.2f} cm/s ({threshold/v0:.2f}·v₀)")
 
     ax.set_xlabel("v̄ [cm/s]", fontsize=12)
-    ax.set_ylabel("densidad", fontsize=12)
+    ax.set_ylabel("fracción de tiempo", fontsize=12)
     ax.set_title("TP5 – distribución de v̄(t)\n(todos los N, ambos modos, estado estacionario)", fontsize=12)
     ax.set_xlim(left=0)
     ax.legend(fontsize=10)
